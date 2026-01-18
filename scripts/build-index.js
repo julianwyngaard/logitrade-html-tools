@@ -66,7 +66,7 @@ function generateHTML(categories) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Julian's Tools</title>
+    <title>tools.julianwyngaard.dev</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -128,8 +128,13 @@ function generateHTML(categories) {
     </style>
 </head>
 <body>
-    <h1>Julian's Tools</h1>
+    <h1>tools.julianwyngaard.dev</h1>
+
     <p class="intro">A collection of single-file HTML tools. Each tool runs entirely in your browser with no server-side processing.</p>
+
+    <p class="intro">They are predominantly utility and experimental low-stakes tools written predominately by LLM's.</p>
+
+    <p class="intro">The <a href="colophon.html">colophon</a> lists commit messages and transcripts for every tool.</p>
 ${toolsList}
     <footer>
         <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source on GitHub</a> |
