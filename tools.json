@@ -1,0 +1,30 @@
+{
+  "tools": [
+    {
+      "slug": "json-formatter",
+      "name": "JSON Formatter",
+      "description": "Format, validate, and minify JSON. Shareable via URL.",
+      "category": "data",
+      "created": "2026-01-18",
+      "updated": "2026-01-18"
+    }
+  ],
+  "categories": {
+    "data": {
+      "name": "Data & Text",
+      "order": 1
+    },
+    "image": {
+      "name": "Image & Media",
+      "order": 2
+    },
+    "dev": {
+      "name": "Development",
+      "order": 3
+    },
+    "misc": {
+      "name": "Miscellaneous",
+      "order": 99
+    }
+  }
+}
