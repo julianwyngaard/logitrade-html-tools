@@ -1,0 +1,16 @@
+{
+  "name": "logitrade-html-tools",
+  "version": "1.0.0",
+  "description": "A collection of single-file HTML tools",
+  "scripts": {
+    "build": "bash scripts/build.sh",
+    "build:index": "node scripts/build-index.js",
+    "build:colophon": "node scripts/build-colophon.js",
+    "serve": "npx serve ."
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/julianwyngaard/logitrade-html-tools"
+  },
+  "license": "Apache-2.0"
+}
