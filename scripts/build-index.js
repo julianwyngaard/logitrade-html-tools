@@ -9,6 +9,14 @@ const ROOT = path.join(__dirname, '..');
 const TOOLS_JSON = path.join(ROOT, 'tools.json');
 const OUTPUT = path.join(ROOT, 'index.html');
 
+function escapeHtml(text) {
+    return text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
 function loadTools() {
     const data = JSON.parse(fs.readFileSync(TOOLS_JSON, 'utf8'));
     return data;
@@ -41,13 +49,13 @@ function generateHTML(categories) {
     const toolsList = categories.map(cat => {
         const toolItems = cat.tools.map(tool => `
         <li>
-            <a href="${tool.slug}.html">${tool.name}</a>
-            <p>${tool.description}</p>
+            <a href="${tool.slug}.html">${escapeHtml(tool.name)}</a>
+            <p>${escapeHtml(tool.description)}</p>
         </li>`).join('');
 
         return `
     <section>
-        <h2>${cat.name}</h2>
+        <h2>${escapeHtml(cat.name)}</h2>
         <ul class="tools-list">${toolItems}
         </ul>
     </section>`;
