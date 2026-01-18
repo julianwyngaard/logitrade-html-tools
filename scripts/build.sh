@@ -9,7 +9,7 @@ ROOT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$ROOT_DIR"
 
-echo "Building Julian's Tools..."
+echo "Building Tools..."
 
 echo "  Generating index.html..."
 node scripts/build-index.js
