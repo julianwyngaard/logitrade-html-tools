@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSON Formatter - Julian's Tools</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        button:hover {
+            background: #e5e5e5;
+        }
+        button.primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        button.primary:hover {
+            background: #0055aa;
+        }
+        textarea {
+            width: 100%;
+            height: 400px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 14px;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        .status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #e7f3ff;
+            color: #004085;
+        }
+        .status:empty {
+            display: none;
+        }
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>JSON Formatter</h1>
+    <p>Paste JSON below to format, validate, or minify it.</p>
+
+    <div class="buttons">
+        <button class="primary" onclick="formatJSON()">Format</button>
+        <button onclick="minifyJSON()">Minify</button>
+        <button onclick="copyToClipboard()">Copy</button>
+        <button onclick="clearJSON()">Clear</button>
+        <button onclick="shareURL()">Share URL</button>
+    </div>
+
+    <textarea id="json-input" placeholder="Paste your JSON here...">{
+  "example": "Paste your JSON here",
+  "nested": {
+    "value": 123,
+    "list": [1, 2, 3]
+  }
+}</textarea>
+
+    <div id="status" class="status"></div>
+
+    <footer>
+        <a href="index.html">Julian's Tools</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        const textarea = document.getElementById('json-input');
+        const status = document.getElementById('status');
+
+        // Load JSON from URL parameter on page load
+        function loadFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const jsonParam = params.get('json');
+            if (jsonParam) {
+                try {
+                    textarea.value = decodeURIComponent(jsonParam);
+                    showStatus('Loaded JSON from URL', 'info');
+                } catch (e) {
+                    showStatus('Failed to load JSON from URL', 'error');
+                }
+            }
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = 'status ' + type;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function formatJSON() {
+            try {
+                const parsed = JSON.parse(textarea.value);
+                textarea.value = JSON.stringify(parsed, null, 2);
+                showStatus('JSON formatted successfully', 'success');
+            } catch (e) {
+                showStatus('Invalid JSON: ' + e.message, 'error');
+            }
+        }
+
+        function minifyJSON() {
+            try {
+                const parsed = JSON.parse(textarea.value);
+                textarea.value = JSON.stringify(parsed);
+                showStatus('JSON minified successfully', 'success');
+            } catch (e) {
+                showStatus('Invalid JSON: ' + e.message, 'error');
+            }
+        }
+
+        function copyToClipboard() {
+            textarea.select();
+            navigator.clipboard.writeText(textarea.value).then(() => {
+                showStatus('Copied to clipboard', 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                document.execCommand('copy');
+                showStatus('Copied to clipboard', 'success');
+            });
+        }
+
+        function clearJSON() {
+            textarea.value = '';
+            status.textContent = '';
+            status.className = 'status';
+            // Clear URL parameter
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
+        function shareURL() {
+            const json = textarea.value.trim();
+            if (!json) {
+                showStatus('Nothing to share', 'error');
+                return;
+            }
+
+            // Validate JSON first
+            try {
+                JSON.parse(json);
+            } catch (e) {
+                showStatus('Cannot share invalid JSON: ' + e.message, 'error');
+                return;
+            }
+
+            const encoded = encodeURIComponent(json);
+
+            // Check URL length (browsers typically support ~2000 chars)
+            const maxLength = 1500;
+            if (encoded.length > maxLength) {
+                showStatus('JSON too large to share via URL (' + encoded.length + ' chars, max ' + maxLength + ')', 'error');
+                return;
+            }
+
+            const url = window.location.origin + window.location.pathname + '?json=' + encoded;
+            window.history.replaceState({}, '', '?json=' + encoded);
+
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('URL copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('URL updated - copy from address bar', 'info');
+            });
+        }
+
+        // Initialize
+        loadFromURL();
+    </script>
+</body>
+</html>
