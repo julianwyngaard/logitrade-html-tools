@@ -49,9 +49,8 @@ Create `[tool-name].html` in the root directory. Use this template:
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>[Tool Name] - Julian's Tools</title>
+    <title>[Tool Name] - tools.julianwyngaard.dev/</title>
     <style>
-        /* Copy base styles from lib/common.css or customize */
         * { box-sizing: border-box; }
         body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -67,11 +66,12 @@ Create `[tool-name].html` in the root directory. Use this template:
 <body>
     <a href="index.html" class="back-link">&larr; All Tools</a>
     <h1>[Tool Name]</h1>
+    <p>[One line instruction to the user on using the tool]</p>
 
     <!-- Your tool UI here -->
 
     <footer>
-        <a href="index.html">Julian's Tools</a> |
+        <a href="index.html">tools.julianwyngaard.dev</a> |
         <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
     </footer>
 
@@ -143,7 +143,7 @@ npm run serve    # Test locally
 
 ```bash
 git add tool-name.html tool-name.docs.md tools.json index.html colophon.html
-git commit -m "feat: add [tool-name] tool"
+git commit -m "feature: add [tool-name] tool"
 git push
 ```
 
@@ -205,30 +205,6 @@ A "behind the scenes" page showing each tool's description (from `.docs.md` file
 
 To add a new category, just add it to the `categories` object with a unique key, display name, and order.
 
-## Shared Library (lib/)
-
-The `lib/` directory contains reusable CSS and JavaScript that you can reference when building tools:
-
-### lib/common.css
-
-Common styles for:
-- Typography and layout
-- Buttons (`.primary` modifier for accent)
-- Form elements (textarea, input)
-- Status messages (`.status.success`, `.status.error`, `.status.info`)
-- Navigation (`.back-link`)
-- Footer
-
-### lib/common.js
-
-Utility functions:
-- `showStatus(element, message, type)` - Display status messages with auto-clear
-- `copyToClipboard(text)` - Copy with fallback for older browsers
-- `getUrlParam(name)` - Get URL parameter
-- `setUrlParam(name, value)` - Update URL without reload
-
-**Note:** These are reference implementations. For single-file tools, copy the styles/functions you need directly into your HTML file rather than linking to them.
-
 ## Project Structure
 
 ```
@@ -237,10 +213,6 @@ Utility functions:
 ├── tools.json              # Source of truth for tools and categories
 ├── [tool-name].html        # Individual tool files
 ├── [tool-name].docs.md     # Tool documentation
-├── lib/                    # Shared CSS/JS (reference implementations)
-│   ├── README.md
-│   ├── common.css
-│   └── common.js
 ├── scripts/                # Build scripts
 │   ├── build.sh            # Main build orchestrator
 │   ├── build-index.js      # Generates index.html
