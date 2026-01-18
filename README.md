@@ -33,4 +33,4 @@ Automatically deployed to GitHub Pages on push to `main`.
 
 ## License
 
-MIT
+Apache 2.0
