@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word & Character Counter - tools.julianwyngaard.dev</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f5f5f5;
+            padding: 1rem;
+            min-height: 100vh;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .description {
+            margin-bottom: 1.5rem;
+            color: #666;
+        }
+
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 0.75rem;
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        textarea::placeholder {
+            color: #999;
+        }
+
+        textarea:focus {
+            border-color: #0066cc;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .stats {
+            font-size: 1rem;
+            color: #666;
+        }
+
+        .stats span {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .btn-remove {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-remove:hover {
+            background-color: #c82333;
+        }
+
+        .btn-add {
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            max-width: 200px;
+        }
+
+        .btn-add:hover {
+            background-color: #0055aa;
+        }
+
+        .actions {
+            margin-bottom: 1.5rem;
+        }
+
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: #0066cc;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">&larr; All Tools</a>
+        <h1>Word & Character Counter</h1>
+        <p class="description">Count words and characters in your text. Add multiple sections to track different pieces of content.</p>
+
+        <div id="sections">
+            <div class="section" data-id="1">
+                <textarea placeholder="Start writing here..." oninput="updateStats(this)"></textarea>
+                <div class="stats-row">
+                    <div class="stats">
+                        <span class="word-count">0</span> words · <span class="char-count">0</span> characters
+                    </div>
+                    <button class="btn-remove" onclick="removeSection(this)">Remove</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button class="btn-add" onclick="addSection()">Add Section</button>
+        </div>
+
+        <footer>
+            <a href="index.html">tools.julianwyngaard.dev</a> |
+            <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+        </footer>
+    </div>
+
+    <script>
+        let sectionId = 1;
+
+        // Load sections from URL parameter on page load
+        function loadFromURL() {
+            const params = new URLSearchParams(window.location.search);
+            const sectionsParam = params.get('sections');
+            if (sectionsParam) {
+                try {
+                    const sections = JSON.parse(decodeURIComponent(sectionsParam));
+                    if (Array.isArray(sections) && sections.length > 0) {
+                        // Clear default section
+                        document.getElementById('sections').innerHTML = '';
+                        sectionId = 0;
+
+                        // Add sections from URL
+                        sections.forEach(text => {
+                            addSection(text);
+                        });
+                    }
+                } catch (e) {
+                    console.error('Failed to load sections from URL:', e);
+                }
+            }
+        }
+
+        function updateStats(textarea) {
+            const section = textarea.closest('.section');
+            const text = textarea.value;
+
+            // Count words (split by whitespace and filter empty strings)
+            const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
+
+            // Count characters
+            const characters = text.length;
+
+            section.querySelector('.word-count').textContent = words;
+            section.querySelector('.char-count').textContent = characters;
+
+            // Update URL with current state
+            updateURL();
+        }
+
+        function addSection(initialText = '') {
+            sectionId++;
+            const sectionsContainer = document.getElementById('sections');
+
+            const newSection = document.createElement('div');
+            newSection.className = 'section';
+            newSection.dataset.id = sectionId;
+            newSection.innerHTML = `
+                <textarea placeholder="Start writing here..." oninput="updateStats(this)">${initialText}</textarea>
+                <div class="stats-row">
+                    <div class="stats">
+                        <span class="word-count">0</span> words · <span class="char-count">0</span> characters
+                    </div>
+                    <button class="btn-remove" onclick="removeSection(this)">Remove</button>
+                </div>
+            `;
+
+            sectionsContainer.appendChild(newSection);
+
+            const textarea = newSection.querySelector('textarea');
+            if (initialText) {
+                updateStats(textarea);
+            }
+            textarea.focus();
+        }
+
+        function removeSection(button) {
+            const section = button.closest('.section');
+            const sectionsContainer = document.getElementById('sections');
+
+            // Always keep at least one section
+            if (sectionsContainer.children.length > 1) {
+                section.remove();
+                updateURL();
+            } else {
+                // If it's the last section, just clear it
+                const textarea = section.querySelector('textarea');
+                textarea.value = '';
+                updateStats(textarea);
+            }
+        }
+
+        function updateURL() {
+            const sectionsContainer = document.getElementById('sections');
+            const textareas = sectionsContainer.querySelectorAll('textarea');
+            const sections = Array.from(textareas).map(ta => ta.value);
+
+            // Only update URL if there's content
+            const hasContent = sections.some(text => text.trim() !== '');
+
+            if (hasContent) {
+                const encoded = encodeURIComponent(JSON.stringify(sections));
+
+                // Check URL length (keep it reasonable)
+                if (encoded.length < 1500) {
+                    window.history.replaceState({}, '', '?sections=' + encoded);
+                } else {
+                    // If too large, clear the URL
+                    window.history.replaceState({}, '', window.location.pathname);
+                }
+            } else {
+                // Clear URL if no content
+                window.history.replaceState({}, '', window.location.pathname);
+            }
+        }
+
+        // Initialize
+        loadFromURL();
+    </script>
+</body>
+</html>
