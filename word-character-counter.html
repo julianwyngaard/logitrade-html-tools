@@ -130,7 +130,52 @@
         }
 
         .actions {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
             margin-bottom: 1.5rem;
+        }
+
+        .btn-share {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-share:hover {
+            background-color: #218838;
+        }
+
+        .status {
+            margin-bottom: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.info {
+            background: #e7f3ff;
+            color: #004085;
+        }
+
+        .status:empty {
+            display: none;
         }
 
         footer {
@@ -171,7 +216,10 @@
 
         <div class="actions">
             <button class="btn-add" onclick="addSection()">Add Section</button>
+            <button class="btn-share" onclick="shareURL()">Share URL</button>
         </div>
+
+        <div id="status" class="status"></div>
 
         <footer>
             <a href="index.html">tools.julianwyngaard.dev</a> |
@@ -181,6 +229,19 @@
 
     <script>
         let sectionId = 1;
+        const MAX_URL_LENGTH = 1800; // Safe limit for browser URL length
+        const status = document.getElementById('status');
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = 'status ' + type;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = 'status';
+                }, 4000);
+            }
+        }
 
         // Load sections from URL parameter on page load
         function loadFromURL() {
@@ -188,19 +249,34 @@
             const sectionsParam = params.get('sections');
             if (sectionsParam) {
                 try {
-                    const sections = JSON.parse(decodeURIComponent(sectionsParam));
-                    if (Array.isArray(sections) && sections.length > 0) {
+                    const decoded = decodeURIComponent(sectionsParam);
+                    const sections = JSON.parse(decoded);
+
+                    // Validate that sections is an array of strings
+                    if (!Array.isArray(sections)) {
+                        throw new Error('Invalid sections format');
+                    }
+
+                    // Validate each section is a string and limit size
+                    const validSections = sections
+                        .filter(item => typeof item === 'string')
+                        .slice(0, 20); // Limit to 20 sections max
+
+                    if (validSections.length > 0) {
                         // Clear default section
                         document.getElementById('sections').innerHTML = '';
                         sectionId = 0;
 
-                        // Add sections from URL
-                        sections.forEach(text => {
+                        // Add sections from URL (text is sanitized in addSection)
+                        validSections.forEach(text => {
                             addSection(text);
                         });
+
+                        showStatus('Loaded ' + validSections.length + ' section(s) from URL', 'info');
                     }
                 } catch (e) {
                     console.error('Failed to load sections from URL:', e);
+                    showStatus('Failed to load sections from URL', 'error');
                 }
             }
         }
@@ -229,19 +305,46 @@
             const newSection = document.createElement('div');
             newSection.className = 'section';
             newSection.dataset.id = sectionId;
-            newSection.innerHTML = `
-                <textarea placeholder="Start writing here..." oninput="updateStats(this)">${initialText}</textarea>
-                <div class="stats-row">
-                    <div class="stats">
-                        <span class="word-count">0</span> words · <span class="char-count">0</span> characters
-                    </div>
-                    <button class="btn-remove" onclick="removeSection(this)">Remove</button>
-                </div>
-            `;
+
+            // Create elements safely to prevent XSS
+            const textarea = document.createElement('textarea');
+            textarea.placeholder = 'Start writing here...';
+            textarea.addEventListener('input', function() { updateStats(this); });
+            // Set text content safely - this prevents XSS by not interpreting HTML
+            textarea.value = initialText;
+
+            const statsRow = document.createElement('div');
+            statsRow.className = 'stats-row';
+
+            const stats = document.createElement('div');
+            stats.className = 'stats';
+
+            const wordCount = document.createElement('span');
+            wordCount.className = 'word-count';
+            wordCount.textContent = '0';
+
+            const charCount = document.createElement('span');
+            charCount.className = 'char-count';
+            charCount.textContent = '0';
+
+            stats.appendChild(wordCount);
+            stats.appendChild(document.createTextNode(' words · '));
+            stats.appendChild(charCount);
+            stats.appendChild(document.createTextNode(' characters'));
+
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'btn-remove';
+            removeBtn.textContent = 'Remove';
+            removeBtn.addEventListener('click', function() { removeSection(this); });
+
+            statsRow.appendChild(stats);
+            statsRow.appendChild(removeBtn);
+
+            newSection.appendChild(textarea);
+            newSection.appendChild(statsRow);
 
             sectionsContainer.appendChild(newSection);
 
-            const textarea = newSection.querySelector('textarea');
             if (initialText) {
                 updateStats(textarea);
             }
@@ -275,8 +378,8 @@
             if (hasContent) {
                 const encoded = encodeURIComponent(JSON.stringify(sections));
 
-                // Check URL length (keep it reasonable)
-                if (encoded.length < 1500) {
+                // Check URL length (keep it reasonable for silent updates)
+                if (encoded.length < MAX_URL_LENGTH) {
                     window.history.replaceState({}, '', '?sections=' + encoded);
                 } else {
                     // If too large, clear the URL
@@ -286,6 +389,50 @@
                 // Clear URL if no content
                 window.history.replaceState({}, '', window.location.pathname);
             }
+        }
+
+        function shareURL() {
+            const sectionsContainer = document.getElementById('sections');
+            const textareas = sectionsContainer.querySelectorAll('textarea');
+            const sections = Array.from(textareas).map(ta => ta.value);
+
+            // Check if there's any content to share
+            const hasContent = sections.some(text => text.trim() !== '');
+            if (!hasContent) {
+                showStatus('Nothing to share - add some text first', 'error');
+                return;
+            }
+
+            const encoded = encodeURIComponent(JSON.stringify(sections));
+
+            // Calculate full URL length
+            const baseURL = window.location.origin + window.location.pathname;
+            const fullURLLength = baseURL.length + '?sections='.length + encoded.length;
+
+            // Check URL length - browsers typically support ~2000 chars, use safe limit
+            if (fullURLLength > MAX_URL_LENGTH) {
+                const currentChars = sections.reduce((sum, s) => sum + s.length, 0);
+                showStatus(
+                    'Content too large to share via URL (' + currentChars + ' characters). ' +
+                    'Try reducing the text or removing some sections.',
+                    'error'
+                );
+                return;
+            }
+
+            // Update the URL
+            const queryString = '?sections=' + encoded;
+            window.history.replaceState({}, '', queryString);
+
+            const fullURL = baseURL + queryString;
+
+            // Copy to clipboard
+            navigator.clipboard.writeText(fullURL).then(() => {
+                showStatus('Share URL copied to clipboard!', 'success');
+            }).catch(() => {
+                // Fallback: show URL in status for manual copy
+                showStatus('URL updated - copy from address bar to share', 'info');
+            });
         }
 
         // Initialize
