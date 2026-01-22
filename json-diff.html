@@ -589,8 +589,55 @@
   </div>
 
   <script>
+    // Storage key for localStorage
+    const STORAGE_KEY = 'json-diff-state';
+
     // Diff statistics
     let stats = { added: 0, removed: 0, modified: 0 };
+
+    // Save current state to localStorage
+    function saveToStorage() {
+      const originalText = document.getElementById('original').value;
+      const modifiedText = document.getElementById('modified').value;
+      const data = { original: originalText, modified: modifiedText };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {
+        // Silently fail if localStorage is unavailable or full
+        console.warn('Failed to save to localStorage:', e);
+      }
+    }
+
+    // Load state from localStorage
+    function loadFromStorage() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const data = JSON.parse(stored);
+          if (typeof data === 'object' && data !== null) {
+            if (data.original && typeof data.original === 'string') {
+              document.getElementById('original').value = data.original;
+            }
+            if (data.modified && typeof data.modified === 'string') {
+              document.getElementById('modified').value = data.modified;
+            }
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to load from localStorage:', e);
+      }
+      return false;
+    }
+
+    // Clear localStorage
+    function clearStorage() {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.warn('Failed to clear localStorage:', e);
+      }
+    }
 
     // Parse JSON with detailed error
     function parseJSON(str, editorId) {
@@ -622,6 +669,7 @@
       const result = parseJSON(textarea.value, editorId);
       if (result.success) {
         textarea.value = JSON.stringify(result.data, null, 2);
+        saveToStorage();
       }
     }
 
@@ -859,6 +907,9 @@
       // Clear errors
       document.getElementById('original-error').classList.remove('visible');
       document.getElementById('modified-error').classList.remove('visible');
+
+      // Save to localStorage
+      saveToStorage();
     }
 
     // Clear all
@@ -876,6 +927,9 @@
       document.getElementById('stat-added').textContent = '+0 added';
       document.getElementById('stat-removed').textContent = '-0 removed';
       document.getElementById('stat-modified').textContent = '~0 modified';
+
+      // Clear localStorage
+      clearStorage();
     }
 
     // Load sample data
@@ -918,6 +972,9 @@
       // Clear any previous errors
       document.getElementById('original-error').classList.remove('visible');
       document.getElementById('modified-error').classList.remove('visible');
+
+      // Save to localStorage
+      saveToStorage();
 
       // Auto-compare
       compareJSON();
@@ -991,12 +1048,13 @@
       });
     }
 
-    // Load from URL on page load
+    // Load from URL on page load (URL takes priority over localStorage)
     function loadFromURL() {
       const params = new URLSearchParams(window.location.search);
       const dataParam = params.get('data');
 
       if (dataParam) {
+        // URL data takes priority - load from shared URL
         try {
           const decoded = decodeURIComponent(dataParam);
           const data = JSON.parse(decoded);
@@ -1016,6 +1074,9 @@
             document.getElementById('modified').value = data.modified;
           }
 
+          // Save to localStorage so it persists
+          saveToStorage();
+
           showStatus('Loaded JSON from shared URL', 'info');
 
           // Auto-compare if both panels have content
@@ -1025,11 +1086,26 @@
         } catch (e) {
           showStatus('Failed to load data from URL', 'error');
         }
+      } else {
+        // No URL data - try to restore from localStorage
+        const restored = loadFromStorage();
+        if (restored) {
+          const originalText = document.getElementById('original').value.trim();
+          const modifiedText = document.getElementById('modified').value.trim();
+          // Auto-compare if both panels have content
+          if (originalText && modifiedText) {
+            compareJSON();
+          }
+        }
       }
     }
 
     // Initialize on page load
     loadFromURL();
+
+    // Auto-save to localStorage on input changes
+    document.getElementById('original').addEventListener('input', saveToStorage);
+    document.getElementById('modified').addEventListener('input', saveToStorage);
 
     // Keyboard shortcut
     document.addEventListener('keydown', (e) => {
