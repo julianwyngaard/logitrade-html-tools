@@ -462,6 +462,12 @@
           </svg>
           Clear
         </button>
+        <button class="btn" onclick="shareURL()">
+          <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5z"/>
+          </svg>
+          Share URL
+        </button>
       </div>
     </header>
 
@@ -810,6 +816,9 @@
       // Clear errors
       document.getElementById('original-error').classList.remove('visible');
       document.getElementById('modified-error').classList.remove('visible');
+
+      // Save to localStorage
+      saveToStorage();
     }
 
     // Clear all
@@ -827,6 +836,14 @@
       document.getElementById('stat-added').textContent = '+0 added';
       document.getElementById('stat-removed').textContent = '-0 removed';
       document.getElementById('stat-modified').textContent = '~0 modified';
+
+      // Clear localStorage and URL
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (e) {
+        console.error('Failed to clear localStorage:', e);
+      }
+      window.history.replaceState({}, '', window.location.pathname);
     }
 
     // Load sample data
@@ -870,8 +887,127 @@
       document.getElementById('original-error').classList.remove('visible');
       document.getElementById('modified-error').classList.remove('visible');
 
+      // Save to localStorage
+      saveToStorage();
+
       // Auto-compare
       compareJSON();
+    }
+
+    // Storage and URL handling
+    const STORAGE_KEY = 'json-diff-state';
+    const MAX_URL_LENGTH = 1800;
+
+    // Save current state to localStorage
+    function saveToStorage() {
+      const state = {
+        original: document.getElementById('original').value,
+        modified: document.getElementById('modified').value
+      };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {
+        console.error('Failed to save to localStorage:', e);
+      }
+    }
+
+    // Load state from localStorage
+    function loadFromStorage() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const state = JSON.parse(stored);
+          if (state.original !== undefined) {
+            document.getElementById('original').value = state.original;
+          }
+          if (state.modified !== undefined) {
+            document.getElementById('modified').value = state.modified;
+          }
+          return true;
+        }
+      } catch (e) {
+        console.error('Failed to load from localStorage:', e);
+      }
+      return false;
+    }
+
+    // Load state from URL parameters (share URL)
+    function loadFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const originalParam = params.get('original');
+      const modifiedParam = params.get('modified');
+
+      if (originalParam !== null || modifiedParam !== null) {
+        try {
+          if (originalParam !== null) {
+            document.getElementById('original').value = decodeURIComponent(originalParam);
+          }
+          if (modifiedParam !== null) {
+            document.getElementById('modified').value = decodeURIComponent(modifiedParam);
+          }
+          // Save URL data to localStorage so it persists
+          saveToStorage();
+          return true;
+        } catch (e) {
+          console.error('Failed to load from URL:', e);
+        }
+      }
+      return false;
+    }
+
+    // Generate and copy share URL
+    function shareURL() {
+      const original = document.getElementById('original').value;
+      const modified = document.getElementById('modified').value;
+
+      if (!original.trim() && !modified.trim()) {
+        alert('Nothing to share - add some JSON first');
+        return;
+      }
+
+      const params = new URLSearchParams();
+      if (original.trim()) {
+        params.set('original', original);
+      }
+      if (modified.trim()) {
+        params.set('modified', modified);
+      }
+
+      const baseURL = window.location.origin + window.location.pathname;
+      const queryString = '?' + params.toString();
+      const fullURL = baseURL + queryString;
+
+      // Check URL length
+      if (fullURL.length > MAX_URL_LENGTH) {
+        const totalChars = original.length + modified.length;
+        alert('Content too large to share via URL (' + totalChars + ' characters). Try reducing the JSON size.');
+        return;
+      }
+
+      // Update the URL
+      window.history.replaceState({}, '', queryString);
+
+      // Copy to clipboard
+      navigator.clipboard.writeText(fullURL).then(() => {
+        alert('Share URL copied to clipboard!');
+      }).catch(() => {
+        alert('URL updated - copy from address bar to share');
+      });
+    }
+
+    // Initialize app - URL params override localStorage
+    function initializeApp() {
+      // Try loading from URL first (share link)
+      const loadedFromURL = loadFromURL();
+
+      // If no URL params, try localStorage
+      if (!loadedFromURL) {
+        loadFromStorage();
+      }
+
+      // Set up auto-save on input
+      document.getElementById('original').addEventListener('input', saveToStorage);
+      document.getElementById('modified').addEventListener('input', saveToStorage);
     }
 
     // Keyboard shortcut
@@ -880,6 +1016,9 @@
         compareJSON();
       }
     });
+
+    // Initialize on page load
+    initializeApp();
   </script>
 </body>
 </html>
