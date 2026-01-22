@@ -422,6 +422,42 @@
       text-decoration: underline;
     }
 
+    .status-message {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 1000;
+      transform: translateX(120%);
+      transition: transform 0.3s ease;
+      max-width: 400px;
+    }
+
+    .status-message.visible {
+      transform: translateX(0);
+    }
+
+    .status-message.success {
+      background: var(--diff-add-bg);
+      border: 1px solid var(--diff-add-border);
+      color: var(--diff-add-text);
+    }
+
+    .status-message.error {
+      background: var(--diff-remove-bg);
+      border: 1px solid var(--diff-remove-border);
+      color: var(--diff-remove-text);
+    }
+
+    .status-message.info {
+      background: var(--bg-tertiary);
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+    }
+
     @media (max-width: 900px) {
       .editors-container {
         grid-template-columns: 1fr;
@@ -430,10 +466,17 @@
       .header-actions {
         flex-wrap: wrap;
       }
+
+      .status-message {
+        left: 20px;
+        right: 20px;
+        max-width: none;
+      }
     }
   </style>
 </head>
 <body>
+  <div id="status" class="status-message"></div>
   <div class="container">
     <a href="index.html" class="back-link">&larr; All Tools</a>
 
@@ -461,6 +504,12 @@
             <path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>
           </svg>
           Clear
+        </button>
+        <button class="btn btn-primary" onclick="shareURL()">
+          <svg class="btn-icon" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M13.5 1a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM11 2.5a2.5 2.5 0 1 1 .603 1.628l-6.718 3.12a2.499 2.499 0 0 1 0 1.504l6.718 3.12a2.5 2.5 0 1 1-.488.876l-6.718-3.12a2.5 2.5 0 1 1 0-3.256l6.718-3.12A2.5 2.5 0 0 1 11 2.5zm-8.5 4a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zm11 5.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"/>
+          </svg>
+          Share URL
         </button>
       </div>
     </header>
@@ -873,6 +922,114 @@
       // Auto-compare
       compareJSON();
     }
+
+    // Status message
+    let statusTimeout;
+    function showStatus(message, type = 'info') {
+      const status = document.getElementById('status');
+      status.textContent = message;
+      status.className = 'status-message ' + type;
+
+      // Trigger reflow to restart animation
+      void status.offsetWidth;
+      status.classList.add('visible');
+
+      clearTimeout(statusTimeout);
+      statusTimeout = setTimeout(() => {
+        status.classList.remove('visible');
+      }, 4000);
+    }
+
+    // Share URL functionality
+    const MAX_URL_LENGTH = 8000;
+
+    function shareURL() {
+      const originalText = document.getElementById('original').value.trim();
+      const modifiedText = document.getElementById('modified').value.trim();
+
+      if (!originalText && !modifiedText) {
+        showStatus('Nothing to share - enter JSON in both panels first', 'error');
+        return;
+      }
+
+      // Validate JSON before sharing
+      if (originalText) {
+        const originalResult = parseJSON(originalText, 'original');
+        if (!originalResult.success) {
+          showStatus('Cannot share - fix JSON syntax errors in Original panel', 'error');
+          return;
+        }
+      }
+
+      if (modifiedText) {
+        const modifiedResult = parseJSON(modifiedText, 'modified');
+        if (!modifiedResult.success) {
+          showStatus('Cannot share - fix JSON syntax errors in Modified panel', 'error');
+          return;
+        }
+      }
+
+      // Encode the data
+      const data = { original: originalText, modified: modifiedText };
+      const encoded = encodeURIComponent(JSON.stringify(data));
+      const baseURL = window.location.origin + window.location.pathname;
+      const fullURL = baseURL + '?data=' + encoded;
+
+      if (fullURL.length > MAX_URL_LENGTH) {
+        showStatus(`Content too large to share via URL (${fullURL.length} chars, max ${MAX_URL_LENGTH}). Try with smaller JSON documents.`, 'error');
+        return;
+      }
+
+      // Update URL in address bar
+      window.history.replaceState({}, '', '?data=' + encoded);
+
+      // Copy to clipboard
+      navigator.clipboard.writeText(fullURL).then(() => {
+        showStatus('Share URL copied to clipboard!', 'success');
+      }).catch(() => {
+        showStatus('URL updated - copy from address bar to share', 'info');
+      });
+    }
+
+    // Load from URL on page load
+    function loadFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const dataParam = params.get('data');
+
+      if (dataParam) {
+        try {
+          const decoded = decodeURIComponent(dataParam);
+          const data = JSON.parse(decoded);
+
+          // Validate structure
+          if (typeof data !== 'object' || data === null) {
+            throw new Error('Invalid data format');
+          }
+
+          // Load original if present
+          if (data.original && typeof data.original === 'string') {
+            document.getElementById('original').value = data.original;
+          }
+
+          // Load modified if present
+          if (data.modified && typeof data.modified === 'string') {
+            document.getElementById('modified').value = data.modified;
+          }
+
+          showStatus('Loaded JSON from shared URL', 'info');
+
+          // Auto-compare if both panels have content
+          if (data.original && data.modified) {
+            compareJSON();
+          }
+        } catch (e) {
+          showStatus('Failed to load data from URL', 'error');
+        }
+      }
+    }
+
+    // Initialize on page load
+    loadFromURL();
 
     // Keyboard shortcut
     document.addEventListener('keydown', (e) => {
