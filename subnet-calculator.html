@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subnet Calculator - tools.julianwyngaard.dev</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .input-group {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: flex-end;
+        }
+        .input-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+        .input-field label {
+            font-size: 0.85rem;
+            color: #666;
+        }
+        .input-field input {
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 140px;
+        }
+        .input-field input:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        .input-field input.prefix {
+            width: 60px;
+        }
+        .slash {
+            font-size: 1.5rem;
+            padding-bottom: 0.25rem;
+            color: #666;
+        }
+        .buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        button:hover {
+            background: #e5e5e5;
+        }
+        button.primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        button.primary:hover {
+            background: #0055aa;
+        }
+        .column-toggles {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .column-toggles label {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            cursor: pointer;
+        }
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 0.5rem;
+            text-align: left;
+        }
+        th {
+            background: #f5f5f5;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        tr:hover {
+            background: #f9f9f9;
+        }
+        .action-link {
+            color: #0066cc;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .action-link:hover {
+            text-decoration: underline;
+        }
+        .action-cell {
+            text-align: center;
+            white-space: nowrap;
+        }
+        .join-cell {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            font-size: 0.8rem;
+        }
+        .status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #e7f3ff;
+            color: #004085;
+        }
+        .status:empty {
+            display: none;
+        }
+        .help-text {
+            font-size: 0.85rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        /* Mobile responsive */
+        @media (max-width: 600px) {
+            .input-group {
+                flex-direction: row;
+                align-items: flex-end;
+            }
+            .input-field input {
+                width: 120px;
+            }
+            table {
+                font-size: 0.8rem;
+            }
+            th, td {
+                padding: 0.35rem;
+            }
+            .column-toggles {
+                gap: 0.5rem;
+            }
+        }
+        .mono {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+        }
+        .hosts-col {
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>Subnet Calculator</h1>
+    <p>Enter a network address and CIDR prefix to visualize and divide subnets.</p>
+
+    <div class="input-group">
+        <div class="input-field">
+            <label for="network">Network Address</label>
+            <input type="text" id="network" value="192.168.0.0" placeholder="192.168.0.0">
+        </div>
+        <span class="slash">/</span>
+        <div class="input-field">
+            <label for="prefix">Prefix</label>
+            <input type="number" id="prefix" class="prefix" value="16" min="8" max="30">
+        </div>
+        <button class="primary" onclick="updateNetwork()">Update</button>
+        <button onclick="resetNetwork()">Reset</button>
+    </div>
+
+    <div class="buttons">
+        <button onclick="shareURL()">Share URL</button>
+    </div>
+
+    <div class="column-toggles">
+        <span>Show columns:</span>
+        <label><input type="checkbox" id="col-subnet" checked onchange="renderTable()"> Subnet</label>
+        <label><input type="checkbox" id="col-netmask" onchange="renderTable()"> Netmask</label>
+        <label><input type="checkbox" id="col-range" checked onchange="renderTable()"> Range</label>
+        <label><input type="checkbox" id="col-useable" checked onchange="renderTable()"> Useable IPs</label>
+        <label><input type="checkbox" id="col-hosts" checked onchange="renderTable()"> Hosts</label>
+    </div>
+
+    <p class="help-text">Click <strong>Divide</strong> to split a subnet in half, or <strong>Join</strong> to merge adjacent subnets.</p>
+
+    <div class="table-container">
+        <table id="subnet-table">
+            <thead></thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        // State: array of subnet objects { network: [octets], prefix: number }
+        let subnets = [];
+        let baseNetwork = [192, 168, 0, 0];
+        let basePrefix = 16;
+
+        const STORAGE_KEY = 'subnet-calculator-state';
+
+        // IP utilities
+        function ipToInt(octets) {
+            return (octets[0] << 24) + (octets[1] << 16) + (octets[2] << 8) + octets[3];
+        }
+
+        function intToIp(num) {
+            return [
+                (num >>> 24) & 255,
+                (num >>> 16) & 255,
+                (num >>> 8) & 255,
+                num & 255
+            ];
+        }
+
+        function ipToString(octets) {
+            return octets.join('.');
+        }
+
+        function parseIp(str) {
+            const parts = str.trim().split('.').map(Number);
+            if (parts.length !== 4 || parts.some(p => isNaN(p) || p < 0 || p > 255)) {
+                return null;
+            }
+            return parts;
+        }
+
+        function prefixToNetmask(prefix) {
+            const mask = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+            return intToIp(mask);
+        }
+
+        function getNetworkAddress(ip, prefix) {
+            const ipInt = ipToInt(ip);
+            const mask = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+            return intToIp((ipInt & mask) >>> 0);
+        }
+
+        function getBroadcastAddress(ip, prefix) {
+            const ipInt = ipToInt(ip);
+            const mask = prefix === 0 ? 0 : (0xFFFFFFFF << (32 - prefix)) >>> 0;
+            const hostMask = ~mask >>> 0;
+            return intToIp(((ipInt & mask) | hostMask) >>> 0);
+        }
+
+        function getHostCount(prefix) {
+            if (prefix >= 31) return prefix === 31 ? 2 : 1;
+            return Math.pow(2, 32 - prefix) - 2;
+        }
+
+        function getFirstUseable(network, prefix) {
+            if (prefix >= 31) return network;
+            const ipInt = ipToInt(network);
+            return intToIp(ipInt + 1);
+        }
+
+        function getLastUseable(network, prefix) {
+            const broadcast = getBroadcastAddress(network, prefix);
+            if (prefix >= 31) return broadcast;
+            const bcInt = ipToInt(broadcast);
+            return intToIp(bcInt - 1);
+        }
+
+        // Subnet operations
+        function initializeSubnets() {
+            subnets = [{
+                network: [...baseNetwork],
+                prefix: basePrefix
+            }];
+        }
+
+        function divideSubnet(index) {
+            const subnet = subnets[index];
+            if (subnet.prefix >= 30) {
+                showStatus('Cannot divide further (minimum /30)', 'error');
+                return;
+            }
+
+            const newPrefix = subnet.prefix + 1;
+            const firstNetwork = subnet.network;
+            const secondNetworkInt = ipToInt(firstNetwork) + Math.pow(2, 32 - newPrefix);
+            const secondNetwork = intToIp(secondNetworkInt);
+
+            subnets.splice(index, 1,
+                { network: [...firstNetwork], prefix: newPrefix },
+                { network: secondNetwork, prefix: newPrefix }
+            );
+
+            renderTable();
+            saveState();
+        }
+
+        function joinSubnets(index) {
+            if (index >= subnets.length - 1) return;
+
+            const first = subnets[index];
+            const second = subnets[index + 1];
+
+            // Can only join adjacent subnets of the same size
+            if (first.prefix !== second.prefix) {
+                showStatus('Can only join subnets of the same size', 'error');
+                return;
+            }
+
+            const newPrefix = first.prefix - 1;
+            if (newPrefix < basePrefix) {
+                showStatus('Cannot join beyond the base network', 'error');
+                return;
+            }
+
+            // Check if they form a valid pair (first network must be even in the new prefix space)
+            const expectedFirst = getNetworkAddress(first.network, newPrefix);
+            const expectedSecondInt = ipToInt(expectedFirst) + Math.pow(2, 32 - first.prefix);
+            const expectedSecond = intToIp(expectedSecondInt);
+
+            if (ipToString(first.network) !== ipToString(expectedFirst) ||
+                ipToString(second.network) !== ipToString(expectedSecond)) {
+                showStatus('These subnets cannot be joined (not a valid pair)', 'error');
+                return;
+            }
+
+            subnets.splice(index, 2, { network: [...expectedFirst], prefix: newPrefix });
+
+            renderTable();
+            saveState();
+        }
+
+        // Check if subnet can join with previous
+        function canJoinWithPrevious(index) {
+            if (index === 0) return false;
+            const current = subnets[index];
+            const previous = subnets[index - 1];
+            if (current.prefix !== previous.prefix) return false;
+            if (current.prefix <= basePrefix) return false;
+
+            const newPrefix = current.prefix - 1;
+            const expectedFirst = getNetworkAddress(previous.network, newPrefix);
+            const expectedSecondInt = ipToInt(expectedFirst) + Math.pow(2, 32 - current.prefix);
+            const expectedSecond = intToIp(expectedSecondInt);
+
+            return ipToString(previous.network) === ipToString(expectedFirst) &&
+                   ipToString(current.network) === ipToString(expectedSecond);
+        }
+
+        // Check if subnet can join with next
+        function canJoinWithNext(index) {
+            if (index >= subnets.length - 1) return false;
+            return canJoinWithPrevious(index + 1);
+        }
+
+        // Rendering
+        function renderTable() {
+            const showSubnet = document.getElementById('col-subnet').checked;
+            const showNetmask = document.getElementById('col-netmask').checked;
+            const showRange = document.getElementById('col-range').checked;
+            const showUseable = document.getElementById('col-useable').checked;
+            const showHosts = document.getElementById('col-hosts').checked;
+
+            const thead = document.querySelector('#subnet-table thead');
+            const tbody = document.querySelector('#subnet-table tbody');
+
+            // Build header
+            let headerHtml = '<tr>';
+            if (showSubnet) headerHtml += '<th>Subnet</th>';
+            if (showNetmask) headerHtml += '<th>Netmask</th>';
+            if (showRange) headerHtml += '<th>Range</th>';
+            if (showUseable) headerHtml += '<th>Useable IPs</th>';
+            if (showHosts) headerHtml += '<th class="hosts-col">Hosts</th>';
+            headerHtml += '<th class="action-cell">Divide</th>';
+            headerHtml += '<th class="action-cell">Join</th>';
+            headerHtml += '</tr>';
+            thead.innerHTML = headerHtml;
+
+            // Build body
+            let bodyHtml = '';
+            subnets.forEach((subnet, index) => {
+                const network = subnet.network;
+                const prefix = subnet.prefix;
+                const broadcast = getBroadcastAddress(network, prefix);
+                const firstUseable = getFirstUseable(network, prefix);
+                const lastUseable = getLastUseable(network, prefix);
+                const hostCount = getHostCount(prefix);
+                const netmask = prefixToNetmask(prefix);
+
+                bodyHtml += '<tr>';
+                if (showSubnet) bodyHtml += `<td class="mono">${ipToString(network)}/${prefix}</td>`;
+                if (showNetmask) bodyHtml += `<td class="mono">${ipToString(netmask)}</td>`;
+                if (showRange) bodyHtml += `<td class="mono">${ipToString(network)} - ${ipToString(broadcast)}</td>`;
+                if (showUseable) bodyHtml += `<td class="mono">${ipToString(firstUseable)} - ${ipToString(lastUseable)}</td>`;
+                if (showHosts) bodyHtml += `<td class="hosts-col">${hostCount.toLocaleString()}</td>`;
+
+                // Divide button
+                if (prefix < 30) {
+                    bodyHtml += `<td class="action-cell"><a class="action-link" onclick="divideSubnet(${index})">Divide</a></td>`;
+                } else {
+                    bodyHtml += '<td class="action-cell">-</td>';
+                }
+
+                // Join buttons
+                const canJoinPrev = canJoinWithPrevious(index);
+                const canJoinNext = canJoinWithNext(index);
+
+                bodyHtml += '<td class="action-cell"><div class="join-cell">';
+                if (canJoinPrev) {
+                    bodyHtml += `<a class="action-link" onclick="joinSubnets(${index - 1})">↑ /${prefix - 1}</a>`;
+                }
+                if (canJoinNext) {
+                    bodyHtml += `<a class="action-link" onclick="joinSubnets(${index})">↓ /${prefix - 1}</a>`;
+                }
+                if (!canJoinPrev && !canJoinNext) {
+                    bodyHtml += '-';
+                }
+                bodyHtml += '</div></td>';
+
+                bodyHtml += '</tr>';
+            });
+            tbody.innerHTML = bodyHtml;
+        }
+
+        // UI Functions
+        function updateNetwork() {
+            const networkStr = document.getElementById('network').value;
+            const prefix = parseInt(document.getElementById('prefix').value, 10);
+
+            const network = parseIp(networkStr);
+            if (!network) {
+                showStatus('Invalid IP address format', 'error');
+                return;
+            }
+
+            if (isNaN(prefix) || prefix < 8 || prefix > 30) {
+                showStatus('Prefix must be between 8 and 30', 'error');
+                return;
+            }
+
+            // Normalize to network address
+            const normalizedNetwork = getNetworkAddress(network, prefix);
+
+            baseNetwork = normalizedNetwork;
+            basePrefix = prefix;
+            document.getElementById('network').value = ipToString(normalizedNetwork);
+
+            initializeSubnets();
+            renderTable();
+            saveState();
+            showStatus('Network updated', 'success');
+        }
+
+        function resetNetwork() {
+            document.getElementById('network').value = '192.168.0.0';
+            document.getElementById('prefix').value = '16';
+            baseNetwork = [192, 168, 0, 0];
+            basePrefix = 16;
+            initializeSubnets();
+            renderTable();
+            saveState();
+            showStatus('Reset to default', 'info');
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function shareURL() {
+            const state = {
+                network: ipToString(baseNetwork),
+                prefix: basePrefix,
+                subnets: subnets.map(s => `${ipToString(s.network)}/${s.prefix}`)
+            };
+
+            const encoded = encodeURIComponent(JSON.stringify(state));
+
+            if (encoded.length > 1500) {
+                showStatus('Configuration too large to share via URL', 'error');
+                return;
+            }
+
+            const url = window.location.origin + window.location.pathname + '?state=' + encoded;
+            window.history.replaceState({}, '', '?state=' + encoded);
+
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('URL copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('URL updated - copy from address bar', 'info');
+            });
+        }
+
+        // State persistence
+        function saveState() {
+            const state = {
+                network: ipToString(baseNetwork),
+                prefix: basePrefix,
+                subnets: subnets.map(s => ({ network: ipToString(s.network), prefix: s.prefix })),
+                columns: {
+                    subnet: document.getElementById('col-subnet').checked,
+                    netmask: document.getElementById('col-netmask').checked,
+                    range: document.getElementById('col-range').checked,
+                    useable: document.getElementById('col-useable').checked,
+                    hosts: document.getElementById('col-hosts').checked
+                }
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        }
+
+        function loadState() {
+            // First check URL params
+            const params = new URLSearchParams(window.location.search);
+            const stateParam = params.get('state');
+
+            if (stateParam) {
+                try {
+                    const state = JSON.parse(decodeURIComponent(stateParam));
+                    return loadFromState(state, 'URL');
+                } catch (e) {
+                    showStatus('Failed to load state from URL', 'error');
+                }
+            }
+
+            // Then check localStorage
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                try {
+                    const state = JSON.parse(stored);
+                    return loadFromState(state, 'saved session');
+                } catch (e) {
+                    // Invalid stored state, ignore
+                }
+            }
+
+            // Default initialization
+            initializeSubnets();
+        }
+
+        function loadFromState(state, source) {
+            const network = parseIp(state.network);
+            if (network && state.prefix >= 8 && state.prefix <= 30) {
+                baseNetwork = network;
+                basePrefix = state.prefix;
+                document.getElementById('network').value = state.network;
+                document.getElementById('prefix').value = state.prefix;
+
+                if (state.subnets && Array.isArray(state.subnets)) {
+                    subnets = state.subnets.map(s => {
+                        if (typeof s === 'string') {
+                            // URL format: "192.168.0.0/17"
+                            const [ip, prefix] = s.split('/');
+                            return { network: parseIp(ip), prefix: parseInt(prefix, 10) };
+                        } else {
+                            // localStorage format: { network: "192.168.0.0", prefix: 17 }
+                            return { network: parseIp(s.network), prefix: s.prefix };
+                        }
+                    }).filter(s => s.network !== null);
+                } else {
+                    initializeSubnets();
+                }
+
+                if (state.columns) {
+                    document.getElementById('col-subnet').checked = state.columns.subnet !== false;
+                    document.getElementById('col-netmask').checked = state.columns.netmask === true;
+                    document.getElementById('col-range').checked = state.columns.range !== false;
+                    document.getElementById('col-useable').checked = state.columns.useable !== false;
+                    document.getElementById('col-hosts').checked = state.columns.hosts !== false;
+                }
+
+                showStatus(`Loaded from ${source}`, 'info');
+                return true;
+            }
+            return false;
+        }
+
+        // Save column preferences on change
+        document.querySelectorAll('.column-toggles input').forEach(cb => {
+            cb.addEventListener('change', saveState);
+        });
+
+        // Initialize
+        loadState();
+        renderTable();
+    </script>
+</body>
+</html>

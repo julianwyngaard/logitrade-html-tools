@@ -132,7 +132,7 @@ function generateHTML(categories) {
 
     <p class="intro">A collection of single-file HTML tools. Each tool runs entirely in your browser with no server-side processing.</p>
 
-    <p class="intro">They are predominantly utility and experimental low-stakes tools written by LLMs.</p>
+    <p class="intro">They are utility and experimental low-stakes tools written predominantly by LLMs.</p>
 
     <p class="intro">The <a href="colophon.html">colophon</a> lists commit messages and transcripts for every tool.</p>
 ${toolsList}

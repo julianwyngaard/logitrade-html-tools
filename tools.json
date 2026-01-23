@@ -23,6 +23,14 @@
       "category": "data",
       "created": "2026-01-22",
       "updated": "2026-01-22"
+    },
+    {
+      "slug": "subnet-calculator",
+      "name": "Subnet Calculator",
+      "description": "Visual subnet division and joining for IP address planning. Shareable via URL.",
+      "category": "networking",
+      "created": "2026-01-24",
+      "updated": "2026-01-24"
     }
   ],
   "categories": {
@@ -30,13 +38,17 @@
       "name": "Data & Text",
       "order": 1
     },
+    "networking": {
+      "name": "Networking",
+      "order": 2
+    },
     "image": {
       "name": "Image & Media",
-      "order": 2
+      "order": 3
     },
     "dev": {
       "name": "Development",
-      "order": 3
+      "order": 4
     },
     "misc": {
       "name": "Miscellaneous",
