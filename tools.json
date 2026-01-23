@@ -19,7 +19,7 @@
     {
       "slug": "json-diff",
       "name": "JSON Diff Tool",
-      "description": "Compare two JSON documents with git-like diff visualization. Shareable via URL.",
+      "description": "Compare two JSON documents with Git-like diff visualization. Shareable via URL.",
       "category": "data",
       "created": "2026-01-22",
       "updated": "2026-01-22"
