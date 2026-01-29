@@ -47,6 +47,14 @@
       "category": "dev",
       "created": "2026-01-29",
       "updated": "2026-01-29"
+    },
+    {
+      "slug": "url-decoder",
+      "name": "URL Decoder",
+      "description": "Decode and deconstruct URLs into protocol, domain, path, query parameters, and more. Shareable via URL.",
+      "category": "dev",
+      "created": "2026-01-29",
+      "updated": "2026-01-29"
     }
   ],
   "categories": {
