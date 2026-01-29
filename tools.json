@@ -39,6 +39,14 @@
       "category": "data",
       "created": "2026-01-26",
       "updated": "2026-01-26"
+    },
+    {
+      "slug": "jwt-decoder",
+      "name": "JWT Decoder",
+      "description": "Decode and inspect JSON Web Tokens. Shareable via URL.",
+      "category": "dev",
+      "created": "2026-01-29",
+      "updated": "2026-01-29"
     }
   ],
   "categories": {

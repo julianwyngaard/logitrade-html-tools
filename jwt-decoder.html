@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JWT Decoder - tools.julianwyngaard.dev</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 0.75rem;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+            word-break: break-all;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+        .badge.valid {
+            background: #d4edda;
+            color: #155724;
+        }
+        .badge.invalid {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .badge:empty {
+            display: none;
+        }
+        .buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        button:hover {
+            background: #e5e5e5;
+        }
+        button.primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        button.primary:hover {
+            background: #0055aa;
+        }
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 0;
+        }
+        .tab {
+            padding: 0.5rem 1.25rem;
+            font-size: 0.95rem;
+            cursor: pointer;
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            background: transparent;
+            color: #555;
+            margin-bottom: -2px;
+        }
+        .tab:hover {
+            color: #0066cc;
+            background: #f5f5f5;
+        }
+        .tab.active {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        .tab-content {
+            border: 1px solid #ddd;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            padding: 1rem;
+            min-height: 200px;
+        }
+        .tab-panel {
+            display: none;
+        }
+        .tab-panel.active {
+            display: block;
+        }
+        .section-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 0.25rem;
+            margin-top: 1rem;
+        }
+        .section-label:first-child {
+            margin-top: 0;
+        }
+        pre {
+            background: #f5f5f5;
+            padding: 0.75rem;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            margin: 0.25rem 0 0 0;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .claim-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            margin-top: 0.25rem;
+        }
+        .claim-table th,
+        .claim-table td {
+            border: 1px solid #ddd;
+            padding: 0.4rem 0.6rem;
+            text-align: left;
+        }
+        .claim-table th {
+            background: #f5f5f5;
+            font-weight: 600;
+        }
+        .claim-table .claim-key {
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        .claim-table .claim-desc {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        .claim-table .claim-value {
+            word-break: break-all;
+        }
+        .empty-state {
+            color: #999;
+            text-align: center;
+            padding: 2rem;
+        }
+        .status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #e7f3ff;
+            color: #004085;
+        }
+        .status:empty {
+            display: none;
+        }
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 600px) {
+            .tab {
+                padding: 0.4rem 0.75rem;
+                font-size: 0.85rem;
+            }
+            .tab-content {
+                padding: 0.75rem;
+            }
+            .claim-table {
+                font-size: 0.8rem;
+            }
+            .claim-table th,
+            .claim-table td {
+                padding: 0.3rem 0.4rem;
+            }
+            pre {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>JWT Decoder</h1>
+    <p>Paste a JWT below to decode its header, payload, and signature.</p>
+
+    <textarea id="jwt-input" placeholder="Paste your JWT here (e.g., eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...)"></textarea>
+    <div id="badge" class="badge"></div>
+
+    <div class="buttons">
+        <button onclick="shareURL()">Share URL</button>
+        <button onclick="clearInput()">Clear</button>
+    </div>
+
+    <div id="output-section" style="display: none;">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('json')">JSON</button>
+            <button class="tab" onclick="switchTab('decoded')">Decoded</button>
+            <button class="tab" onclick="switchTab('encoded')">Encoded</button>
+        </div>
+        <div class="tab-content">
+            <div id="tab-json" class="tab-panel active"></div>
+            <div id="tab-decoded" class="tab-panel"></div>
+            <div id="tab-encoded" class="tab-panel"></div>
+        </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        const STORAGE_KEY = 'jwt-decoder-state';
+
+        const KNOWN_HEADER_CLAIMS = {
+            alg: 'Algorithm',
+            typ: 'Type',
+            kid: 'Key ID',
+            jku: 'JWK Set URL',
+            x5u: 'X.509 URL',
+            x5t: 'X.509 Thumbprint',
+            cty: 'Content Type'
+        };
+
+        const KNOWN_PAYLOAD_CLAIMS = {
+            sub: 'Subject',
+            iss: 'Issuer',
+            aud: 'Audience',
+            exp: 'Expiration Time',
+            iat: 'Issued At',
+            nbf: 'Not Before',
+            jti: 'JWT ID',
+            name: 'Name',
+            email: 'Email',
+            roles: 'Roles',
+            scope: 'Scope'
+        };
+
+        const TIMESTAMP_CLAIMS = new Set(['exp', 'iat', 'nbf']);
+
+        let currentTab = 'json';
+
+        function base64UrlDecode(str) {
+            let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (base64.length % 4) base64 += '=';
+            try {
+                return decodeURIComponent(
+                    atob(base64)
+                        .split('')
+                        .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+                        .join('')
+                );
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function parseJWT(token) {
+            const trimmed = token.trim();
+            if (!trimmed) return null;
+
+            const parts = trimmed.split('.');
+            if (parts.length !== 3) return null;
+
+            const headerStr = base64UrlDecode(parts[0]);
+            const payloadStr = base64UrlDecode(parts[1]);
+
+            if (!headerStr || !payloadStr) return null;
+
+            try {
+                const header = JSON.parse(headerStr);
+                const payload = JSON.parse(payloadStr);
+                return {
+                    header: header,
+                    payload: payload,
+                    signature: parts[2],
+                    raw: {
+                        header: parts[0],
+                        payload: parts[1],
+                        signature: parts[2]
+                    }
+                };
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function formatTimestamp(value) {
+            if (typeof value !== 'number') return null;
+            try {
+                const date = new Date(value * 1000);
+                if (isNaN(date.getTime())) return null;
+                return date.toISOString().replace('T', ' ').replace('.000Z', ' UTC');
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function escapeText(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function renderJSON(jwt) {
+            const panel = document.getElementById('tab-json');
+            panel.innerHTML = '';
+
+            const headerLabel = document.createElement('div');
+            headerLabel.className = 'section-label';
+            headerLabel.textContent = 'Header';
+            panel.appendChild(headerLabel);
+
+            const headerPre = document.createElement('pre');
+            headerPre.textContent = JSON.stringify(jwt.header, null, 2);
+            panel.appendChild(headerPre);
+
+            const payloadLabel = document.createElement('div');
+            payloadLabel.className = 'section-label';
+            payloadLabel.textContent = 'Payload';
+            panel.appendChild(payloadLabel);
+
+            const payloadPre = document.createElement('pre');
+            payloadPre.textContent = JSON.stringify(jwt.payload, null, 2);
+            panel.appendChild(payloadPre);
+        }
+
+        function renderDecoded(jwt) {
+            const panel = document.getElementById('tab-decoded');
+            panel.innerHTML = '';
+
+            // Header claims
+            const headerLabel = document.createElement('div');
+            headerLabel.className = 'section-label';
+            headerLabel.textContent = 'Header';
+            panel.appendChild(headerLabel);
+            panel.appendChild(buildClaimTable(jwt.header, KNOWN_HEADER_CLAIMS));
+
+            // Payload claims
+            const payloadLabel = document.createElement('div');
+            payloadLabel.className = 'section-label';
+            payloadLabel.textContent = 'Payload';
+            panel.appendChild(payloadLabel);
+            panel.appendChild(buildClaimTable(jwt.payload, KNOWN_PAYLOAD_CLAIMS));
+        }
+
+        function buildClaimTable(claims, knownClaims) {
+            const table = document.createElement('table');
+            table.className = 'claim-table';
+
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            ['Claim', 'Value'].forEach(text => {
+                const th = document.createElement('th');
+                th.textContent = text;
+                headerRow.appendChild(th);
+            });
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+
+            for (const [key, value] of Object.entries(claims)) {
+                const tr = document.createElement('tr');
+
+                // Claim name cell
+                const keyCell = document.createElement('td');
+                const keyCode = document.createElement('span');
+                keyCode.className = 'claim-key';
+                keyCode.textContent = key;
+                keyCell.appendChild(keyCode);
+
+                if (knownClaims[key]) {
+                    const desc = document.createElement('div');
+                    desc.className = 'claim-desc';
+                    desc.textContent = knownClaims[key];
+                    keyCell.appendChild(desc);
+                }
+                tr.appendChild(keyCell);
+
+                // Value cell
+                const valueCell = document.createElement('td');
+                valueCell.className = 'claim-value';
+
+                if (TIMESTAMP_CLAIMS.has(key) && typeof value === 'number') {
+                    const formatted = formatTimestamp(value);
+                    if (formatted) {
+                        valueCell.textContent = formatted;
+                        const raw = document.createElement('div');
+                        raw.className = 'claim-desc';
+                        raw.textContent = '(' + value + ')';
+                        valueCell.appendChild(raw);
+                    } else {
+                        valueCell.textContent = JSON.stringify(value);
+                    }
+                } else if (typeof value === 'object') {
+                    valueCell.textContent = JSON.stringify(value);
+                } else {
+                    valueCell.textContent = String(value);
+                }
+
+                tr.appendChild(valueCell);
+                tbody.appendChild(tr);
+            }
+
+            table.appendChild(tbody);
+            return table;
+        }
+
+        function renderEncoded(jwt) {
+            const panel = document.getElementById('tab-encoded');
+            panel.innerHTML = '';
+
+            const parts = [
+                { label: 'Header', value: jwt.raw.header },
+                { label: 'Payload', value: jwt.raw.payload },
+                { label: 'Signature', value: jwt.raw.signature }
+            ];
+
+            parts.forEach(part => {
+                const label = document.createElement('div');
+                label.className = 'section-label';
+                label.textContent = part.label;
+                panel.appendChild(label);
+
+                const pre = document.createElement('pre');
+                pre.textContent = part.value;
+                panel.appendChild(pre);
+            });
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.tab').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.remove('active'));
+
+            const tabs = document.querySelectorAll('.tab');
+            const tabIndex = { json: 0, decoded: 1, encoded: 2 }[tabName];
+            tabs[tabIndex].classList.add('active');
+            document.getElementById('tab-' + tabName).classList.add('active');
+        }
+
+        function decodeAndRender() {
+            const input = document.getElementById('jwt-input').value;
+            const badge = document.getElementById('badge');
+            const outputSection = document.getElementById('output-section');
+
+            if (!input.trim()) {
+                badge.textContent = '';
+                badge.className = 'badge';
+                outputSection.style.display = 'none';
+                return;
+            }
+
+            const jwt = parseJWT(input);
+
+            if (!jwt) {
+                badge.textContent = 'Invalid JWT';
+                badge.className = 'badge invalid';
+                outputSection.style.display = 'none';
+                return;
+            }
+
+            badge.textContent = 'Valid JWT';
+            badge.className = 'badge valid';
+            outputSection.style.display = 'block';
+
+            renderJSON(jwt);
+            renderDecoded(jwt);
+            renderEncoded(jwt);
+
+            saveState();
+        }
+
+        function clearInput() {
+            document.getElementById('jwt-input').value = '';
+            decodeAndRender();
+            localStorage.removeItem(STORAGE_KEY);
+            window.history.replaceState({}, '', window.location.pathname);
+            showStatus('Cleared', 'info');
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    status.textContent = '';
+                    status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function shareURL() {
+            const input = document.getElementById('jwt-input').value.trim();
+            if (!input) {
+                showStatus('Nothing to share', 'error');
+                return;
+            }
+
+            const encoded = encodeURIComponent(input);
+
+            if (encoded.length > 2000) {
+                showStatus('JWT too large to share via URL', 'error');
+                return;
+            }
+
+            const url = window.location.origin + window.location.pathname + '?jwt=' + encoded;
+            window.history.replaceState({}, '', '?jwt=' + encoded);
+
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('URL copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('URL updated — copy from address bar', 'info');
+            });
+        }
+
+        function saveState() {
+            const input = document.getElementById('jwt-input').value.trim();
+            if (input) {
+                localStorage.setItem(STORAGE_KEY, input);
+            }
+        }
+
+        function loadState() {
+            const params = new URLSearchParams(window.location.search);
+            const jwtParam = params.get('jwt');
+
+            if (jwtParam) {
+                document.getElementById('jwt-input').value = jwtParam;
+                showStatus('Loaded from URL', 'info');
+                return;
+            }
+
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                document.getElementById('jwt-input').value = stored;
+                showStatus('Loaded from saved session', 'info');
+                return;
+            }
+        }
+
+        // Initialize
+        document.getElementById('jwt-input').addEventListener('input', decodeAndRender);
+        loadState();
+        decodeAndRender();
+    </script>
+</body>
+</html>
