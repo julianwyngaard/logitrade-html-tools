@@ -194,6 +194,57 @@
         footer a:hover {
             text-decoration: underline;
         }
+
+        .options {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.95rem;
+            color: #555;
+        }
+
+        .toggle {
+            position: relative;
+            width: 36px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            inset: 0;
+            background-color: #ccc;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .toggle-slider::before {
+            content: '';
+            position: absolute;
+            height: 14px;
+            width: 14px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.2s;
+        }
+
+        .toggle input:checked + .toggle-slider {
+            background-color: #0066cc;
+        }
+
+        .toggle input:checked + .toggle-slider::before {
+            transform: translateX(16px);
+        }
     </style>
 </head>
 <body>
@@ -201,6 +252,14 @@
         <a href="index.html" class="back-link">&larr; All Tools</a>
         <h1>Word & Character Counter</h1>
         <p class="description">Count words and characters in your text. Add multiple sections to track different pieces of content.</p>
+
+        <div class="options">
+            <label class="toggle">
+                <input type="checkbox" id="includeNewlines" onchange="recountAll()">
+                <span class="toggle-slider"></span>
+            </label>
+            <label for="includeNewlines">Include newlines in character count</label>
+        </div>
 
         <div id="sections">
             <div class="section" data-id="1">
@@ -289,14 +348,20 @@
             const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 
             // Count characters (grapheme clusters for correct emoji/unicode counting)
+            const includeNewlines = document.getElementById('includeNewlines').checked;
+            const countText = includeNewlines ? text : text.replace(/\n/g, '');
             const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
-            const characters = [...segmenter.segment(text)].length;
+            const characters = [...segmenter.segment(countText)].length;
 
             section.querySelector('.word-count').textContent = words;
             section.querySelector('.char-count').textContent = characters;
 
             // Update URL with current state
             updateURL();
+        }
+
+        function recountAll() {
+            document.querySelectorAll('#sections textarea').forEach(ta => updateStats(ta));
         }
 
         function addSection(initialText = '') {
