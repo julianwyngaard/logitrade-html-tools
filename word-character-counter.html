@@ -96,6 +96,26 @@
             font-weight: 600;
         }
 
+        .section-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-copy {
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-copy:hover {
+            background-color: #5a6268;
+        }
+
         .btn-remove {
             background-color: #dc3545;
             color: white;
@@ -268,7 +288,10 @@
                     <div class="stats">
                         <span class="word-count">0</span> words · <span class="char-count">0</span> characters
                     </div>
-                    <button class="btn-remove" onclick="removeSection(this)">Remove</button>
+                    <div class="section-buttons">
+                        <button class="btn-copy" onclick="copySection(this)">Copy</button>
+                        <button class="btn-remove" onclick="removeSection(this)">Remove</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -398,13 +421,23 @@
             stats.appendChild(charCount);
             stats.appendChild(document.createTextNode(' characters'));
 
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'btn-copy';
+            copyBtn.textContent = 'Copy';
+            copyBtn.addEventListener('click', function() { copySection(this); });
+
             const removeBtn = document.createElement('button');
             removeBtn.className = 'btn-remove';
             removeBtn.textContent = 'Remove';
             removeBtn.addEventListener('click', function() { removeSection(this); });
 
+            const sectionButtons = document.createElement('div');
+            sectionButtons.className = 'section-buttons';
+            sectionButtons.appendChild(copyBtn);
+            sectionButtons.appendChild(removeBtn);
+
             statsRow.appendChild(stats);
-            statsRow.appendChild(removeBtn);
+            statsRow.appendChild(sectionButtons);
 
             newSection.appendChild(textarea);
             newSection.appendChild(statsRow);
@@ -415,6 +448,17 @@
                 updateStats(textarea);
             }
             textarea.focus();
+        }
+
+        function copySection(button) {
+            const section = button.closest('.section');
+            const text = section.querySelector('textarea').value;
+            navigator.clipboard.writeText(text).then(() => {
+                button.textContent = 'Copied!';
+                setTimeout(() => { button.textContent = 'Copy'; }, 1500);
+            }).catch(() => {
+                showStatus('Failed to copy to clipboard', 'error');
+            });
         }
 
         function removeSection(button) {
