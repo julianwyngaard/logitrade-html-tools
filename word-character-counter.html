@@ -288,8 +288,9 @@
             // Count words (split by whitespace and filter empty strings)
             const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length;
 
-            // Count characters
-            const characters = text.length;
+            // Count characters (grapheme clusters for correct emoji/unicode counting)
+            const segmenter = new Intl.Segmenter('en', { granularity: 'grapheme' });
+            const characters = [...segmenter.segment(text)].length;
 
             section.querySelector('.word-count').textContent = words;
             section.querySelector('.char-count').textContent = characters;
