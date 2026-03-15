@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagram Visualiser - tools.julianwyngaard.dev</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 { margin-bottom: 0.5rem; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .toolbar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        button:hover { background: #e5e5e5; }
+        button.primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        button.primary:hover { background: #0055aa; }
+        select {
+            padding: 0.5rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+
+        .editor-layout {
+            display: flex;
+            gap: 1rem;
+            min-height: 500px;
+        }
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .editor-pane label {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        textarea {
+            flex: 1;
+            width: 100%;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 14px;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: none;
+            tab-size: 4;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        .preview-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .preview-pane label {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .preview-container {
+            flex: 1;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: auto;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        .preview-container svg {
+            max-width: 100%;
+            height: auto;
+        }
+        .preview-placeholder {
+            color: #999;
+            font-style: italic;
+        }
+        .preview-error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            word-break: break-word;
+            max-width: 100%;
+        }
+
+        .status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #e7f3ff; color: #004085; }
+        .status:empty { display: none; }
+
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        @media (max-width: 768px) {
+            .editor-layout {
+                flex-direction: column;
+                min-height: auto;
+            }
+            textarea {
+                min-height: 200px;
+            }
+            .preview-container {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>Diagram Visualiser</h1>
+    <p>Write or paste Graphviz DOT notation to render diagrams live.</p>
+
+    <div class="toolbar">
+        <select id="examples" onchange="loadExample()">
+            <option value="">Load example...</option>
+            <option value="simple">Simple Graph</option>
+            <option value="flowchart">Flowchart</option>
+            <option value="state">State Machine</option>
+            <option value="cluster">Clustered</option>
+        </select>
+        <button class="primary" onclick="render()">Render</button>
+        <button onclick="copySource()">Copy DOT</button>
+        <button onclick="copySVG()">Copy SVG</button>
+        <button onclick="downloadSVG()">Download SVG</button>
+        <button onclick="downloadPNG()">Download PNG</button>
+        <button onclick="shareURL()">Share URL</button>
+        <button onclick="clearAll()">Clear</button>
+    </div>
+
+    <div class="editor-layout">
+        <div class="editor-pane">
+            <label for="dot-input">DOT Source</label>
+            <textarea id="dot-input" placeholder="digraph G {&#10;    a -> b;&#10;}" spellcheck="false"></textarea>
+        </div>
+        <div class="preview-pane">
+            <label>Preview</label>
+            <div id="preview" class="preview-container">
+                <span class="preview-placeholder">Enter DOT notation and press Render</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3/dist/viz-standalone.js"></script>
+    <script>
+        const STORAGE_KEY = 'diagram-visualiser-dot';
+        const textarea = document.getElementById('dot-input');
+        const preview = document.getElementById('preview');
+        const statusEl = document.getElementById('status');
+        let vizInstance = null;
+        let renderTimeout = null;
+
+        const EXAMPLES = {
+            simple: `digraph G {
+    rankdir=LR;
+    a -> b -> c;
+    b -> d;
+}`,
+            flowchart: `digraph flowchart {
+    start [shape=ellipse];
+    decision [shape=diamond];
+    process1 [shape=box];
+    process2 [shape=box];
+    end [shape=ellipse];
+
+    start -> decision;
+    decision -> process1 [label="yes"];
+    decision -> process2 [label="no"];
+    process1 -> end;
+    process2 -> end;
+}`,
+            state: `digraph states {
+    rankdir=LR;
+    node [shape=circle];
+
+    idle -> loading [label="fetch"];
+    loading -> success [label="200 OK"];
+    loading -> error [label="fail"];
+    error -> loading [label="retry"];
+    success -> idle [label="reset"];
+}`,
+            cluster: `digraph cluster_example {
+    subgraph cluster_0 {
+        label="Frontend";
+        style=filled;
+        color=lightblue;
+        ui -> api_client;
+    }
+    subgraph cluster_1 {
+        label="Backend";
+        style=filled;
+        color=lightyellow;
+        api_server -> database;
+        api_server -> cache;
+    }
+    api_client -> api_server;
+}`
+        };
+
+        // Initialize Viz.js
+        Viz.instance().then(viz => {
+            vizInstance = viz;
+            loadState();
+        }).catch(err => {
+            preview.innerHTML = '<span class="preview-error">Failed to load Graphviz engine: ' + escapeHtml(err.message) + '</span>';
+        });
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function showStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                    statusEl.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function render() {
+            const dot = textarea.value.trim();
+            if (!dot) {
+                preview.innerHTML = '<span class="preview-placeholder">Enter DOT notation and press Render</span>';
+                return;
+            }
+            if (!vizInstance) {
+                showStatus('Graphviz engine still loading, please wait...', 'info');
+                return;
+            }
+            try {
+                const svg = vizInstance.renderSVGElement(dot);
+                preview.innerHTML = '';
+                preview.appendChild(svg);
+                saveToStorage(dot);
+                statusEl.textContent = '';
+                statusEl.className = 'status';
+            } catch (e) {
+                preview.innerHTML = '<span class="preview-error">' + escapeHtml(e.message) + '</span>';
+            }
+        }
+
+        function debouncedRender() {
+            clearTimeout(renderTimeout);
+            renderTimeout = setTimeout(render, 500);
+        }
+
+        textarea.addEventListener('input', debouncedRender);
+
+        // Tab key inserts a tab character
+        textarea.addEventListener('keydown', function(e) {
+            if (e.key === 'Tab') {
+                e.preventDefault();
+                const start = this.selectionStart;
+                const end = this.selectionEnd;
+                this.value = this.value.substring(0, start) + '    ' + this.value.substring(end);
+                this.selectionStart = this.selectionEnd = start + 4;
+                debouncedRender();
+            }
+        });
+
+        function loadExample() {
+            const sel = document.getElementById('examples');
+            const key = sel.value;
+            if (!key) return;
+            textarea.value = EXAMPLES[key];
+            sel.value = '';
+            render();
+        }
+
+        function copySource() {
+            const text = textarea.value;
+            if (!text.trim()) {
+                showStatus('Nothing to copy', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(text).then(() => {
+                showStatus('DOT source copied to clipboard', 'success');
+            }).catch(() => {
+                textarea.select();
+                document.execCommand('copy');
+                showStatus('DOT source copied to clipboard', 'success');
+            });
+        }
+
+        function copySVG() {
+            const svg = preview.querySelector('svg');
+            if (!svg) {
+                showStatus('No diagram to copy', 'error');
+                return;
+            }
+            const svgText = new XMLSerializer().serializeToString(svg);
+            navigator.clipboard.writeText(svgText).then(() => {
+                showStatus('SVG copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('Failed to copy SVG', 'error');
+            });
+        }
+
+        function downloadSVG() {
+            const svg = preview.querySelector('svg');
+            if (!svg) {
+                showStatus('No diagram to download', 'error');
+                return;
+            }
+            const svgText = new XMLSerializer().serializeToString(svg);
+            const blob = new Blob([svgText], { type: 'image/svg+xml' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'diagram.svg';
+            a.click();
+            URL.revokeObjectURL(url);
+            showStatus('SVG downloaded', 'success');
+        }
+
+        function downloadPNG() {
+            const svg = preview.querySelector('svg');
+            if (!svg) {
+                showStatus('No diagram to download', 'error');
+                return;
+            }
+            const svgText = new XMLSerializer().serializeToString(svg);
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            const svgBlob = new Blob([svgText], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(svgBlob);
+
+            img.onload = function() {
+                const scale = 2;
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+
+                canvas.toBlob(function(blob) {
+                    const pngUrl = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = pngUrl;
+                    a.download = 'diagram.png';
+                    a.click();
+                    URL.revokeObjectURL(pngUrl);
+                    showStatus('PNG downloaded (2x resolution)', 'success');
+                }, 'image/png');
+            };
+
+            img.onerror = function() {
+                URL.revokeObjectURL(url);
+                showStatus('Failed to generate PNG', 'error');
+            };
+
+            img.src = url;
+        }
+
+        function shareURL() {
+            const dot = textarea.value.trim();
+            if (!dot) {
+                showStatus('Nothing to share', 'error');
+                return;
+            }
+            const encoded = encodeURIComponent(dot);
+            const maxLength = 2000;
+            if (encoded.length > maxLength) {
+                showStatus('Diagram too large to share via URL (' + encoded.length + ' chars, max ' + maxLength + ')', 'error');
+                return;
+            }
+            const url = window.location.origin + window.location.pathname + '?dot=' + encoded;
+            window.history.replaceState({}, '', '?dot=' + encoded);
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('URL copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('URL updated - copy from address bar', 'info');
+            });
+        }
+
+        function clearAll() {
+            textarea.value = '';
+            preview.innerHTML = '<span class="preview-placeholder">Enter DOT notation and press Render</span>';
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+            localStorage.removeItem(STORAGE_KEY);
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
+        function saveToStorage(dot) {
+            try {
+                localStorage.setItem(STORAGE_KEY, dot);
+            } catch (e) { /* ignore quota errors */ }
+        }
+
+        function loadState() {
+            const params = new URLSearchParams(window.location.search);
+            const dotParam = params.get('dot');
+            if (dotParam) {
+                try {
+                    textarea.value = decodeURIComponent(dotParam);
+                    showStatus('Loaded diagram from URL', 'info');
+                    render();
+                    return;
+                } catch (e) {
+                    showStatus('Failed to load diagram from URL', 'error');
+                }
+            }
+
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                textarea.value = stored;
+                render();
+                return;
+            }
+
+            // Load a default example
+            textarea.value = EXAMPLES.flowchart;
+            render();
+        }
+    </script>
+</body>
+</html>

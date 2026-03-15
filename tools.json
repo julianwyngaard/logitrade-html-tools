@@ -55,6 +55,14 @@
       "category": "dev",
       "created": "2026-01-29",
       "updated": "2026-01-29"
+    },
+    {
+      "slug": "diagram-visualiser",
+      "name": "Diagram Visualiser",
+      "description": "Render Graphviz DOT diagrams live with export to SVG and PNG. Shareable via URL.",
+      "category": "dev",
+      "created": "2026-03-15",
+      "updated": "2026-03-15"
     }
   ],
   "categories": {
