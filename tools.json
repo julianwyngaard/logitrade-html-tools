@@ -63,6 +63,14 @@
       "category": "dev",
       "created": "2026-03-15",
       "updated": "2026-03-15"
+    },
+    {
+      "slug": "mermaid-diagram-visualiser",
+      "name": "Mermaid Diagram Visualiser",
+      "description": "Render Mermaid diagrams live with export to SVG and PNG. Shareable via URL.",
+      "category": "dev",
+      "created": "2026-03-15",
+      "updated": "2026-03-15"
     }
   ],
   "categories": {

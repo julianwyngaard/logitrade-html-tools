@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diagram Visualiser - tools.julianwyngaard.dev</title>
+    <title>Mermaid Diagram Visualiser - tools.julianwyngaard.dev</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -183,19 +183,27 @@
 </head>
 <body>
     <a href="index.html" class="back-link">&larr; All Tools</a>
-    <h1>Diagram Visualiser</h1>
-    <p>Write or paste Graphviz DOT notation to render diagrams live.</p>
+    <h1>Mermaid Diagram Visualiser</h1>
+    <p>Write or paste Mermaid diagram syntax to render diagrams live.</p>
 
     <div class="toolbar">
         <select id="examples" onchange="loadExample()">
             <option value="">Load example...</option>
-            <option value="simple">Simple Graph</option>
             <option value="flowchart">Flowchart</option>
-            <option value="state">State Machine</option>
-            <option value="cluster">Clustered</option>
+            <option value="sequence">Sequence Diagram</option>
+            <option value="state">State Diagram</option>
+            <option value="er">ER Diagram</option>
+            <option value="classDiagram">Class Diagram</option>
+            <option value="gantt">Gantt Chart</option>
+            <option value="pie">Pie Chart</option>
+            <option value="mindmap">Mindmap</option>
+            <option value="timeline">Timeline</option>
+            <option value="gitgraph">Git Graph</option>
+            <option value="quadrant">Quadrant Chart</option>
+            <option value="sankey">Sankey Diagram</option>
         </select>
         <button class="primary" onclick="render()">Render</button>
-        <button onclick="copySource()">Copy DOT</button>
+        <button onclick="copySource()">Copy Source</button>
         <button onclick="copySVG()">Copy SVG</button>
         <button onclick="downloadSVG()">Download SVG</button>
         <button onclick="downloadPNG()">Download PNG</button>
@@ -205,14 +213,14 @@
 
     <div class="editor-layout">
         <div class="editor-pane">
-            <label for="dot-input">DOT Source</label>
-            <textarea id="dot-input" placeholder="digraph G {&#10;    a -> b;&#10;}" spellcheck="false"></textarea>
+            <label for="mermaid-input">Mermaid Source</label>
+            <textarea id="mermaid-input" placeholder="graph LR&#10;    A --> B" spellcheck="false"></textarea>
         </div>
         <div class="resize-handle" id="resize-handle"></div>
         <div class="preview-pane">
             <label>Preview</label>
             <div id="preview" class="preview-container">
-                <span class="preview-placeholder">Enter DOT notation and press Render</span>
+                <span class="preview-placeholder">Enter Mermaid syntax and press Render</span>
             </div>
         </div>
     </div>
@@ -224,69 +232,310 @@
         <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/@viz-js/viz@3.2.4/lib/viz-standalone.js"></script>
-    <script>
-        const STORAGE_KEY = 'diagram-visualiser-dot';
-        const textarea = document.getElementById('dot-input');
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+        const STORAGE_KEY = 'mermaid-diagram-visualiser-src';
+        const textarea = document.getElementById('mermaid-input');
         const preview = document.getElementById('preview');
         const statusEl = document.getElementById('status');
-        let vizInstance = null;
         let renderTimeout = null;
+        let renderCounter = 0;
+
+        mermaid.initialize({ startOnLoad: false, theme: 'default' });
 
         const EXAMPLES = {
-            simple: `digraph G {
-    rankdir=LR;
-    a -> b -> c;
-    b -> d;
-}`,
-            flowchart: `digraph flowchart {
-    start [shape=ellipse];
-    decision [shape=diamond];
-    process1 [shape=box];
-    process2 [shape=box];
-    end [shape=ellipse];
+            flowchart: `graph TD
+    A([Start]) --> B[/Read Input/]
+    B --> C{Valid?}
+    C -->|Yes| D[Process Data]
+    C -->|No| E[Show Error]
+    E --> B
+    D --> F{More Items?}
+    F -->|Yes| B
+    F -->|No| G[(Save to DB)]
+    G --> H([End])
 
-    start -> decision;
-    decision -> process1 [label="yes"];
-    decision -> process2 [label="no"];
-    process1 -> end;
-    process2 -> end;
-}`,
-            state: `digraph states {
-    rankdir=LR;
-    node [shape=circle];
+    style A fill:#4CAF50,color:#fff
+    style H fill:#4CAF50,color:#fff
+    style C fill:#FF9800,color:#fff
+    style F fill:#FF9800,color:#fff
+    style G fill:#2196F3,color:#fff`,
+            sequence: `sequenceDiagram
+    actor User
+    participant App as Web App
+    participant Auth as Auth Service
+    participant API as API Gateway
+    participant DB as Database
 
-    idle -> loading [label="fetch"];
-    loading -> success [label="200 OK"];
-    loading -> error [label="fail"];
-    error -> loading [label="retry"];
-    success -> idle [label="reset"];
-}`,
-            cluster: `digraph cluster_example {
-    subgraph cluster_0 {
-        label="Frontend";
-        style=filled;
-        color=lightblue;
-        ui -> api_client;
+    User->>App: Login request
+    App->>Auth: Validate credentials
+    Auth->>DB: Check user record
+    DB-->>Auth: User found
+    Auth-->>App: JWT token
+
+    Note over App,Auth: Token valid for 24h
+
+    User->>App: Fetch dashboard
+    App->>API: GET /dashboard (Bearer token)
+    API->>Auth: Verify token
+    Auth-->>API: Token valid
+
+    alt Data cached
+        API-->>App: Return cached data
+    else Cache miss
+        API->>DB: Query dashboard data
+        DB-->>API: Results
+        API-->>App: Fresh data
+    end
+
+    App-->>User: Render dashboard`,
+            state: `stateDiagram-v2
+    [*] --> Draft
+
+    state "In Review" as review {
+        [*] --> PeerReview
+        PeerReview --> QAReview : Approved
+        PeerReview --> Draft : Changes Requested
+        QAReview --> [*] : Passed
+        QAReview --> PeerReview : Failed
     }
-    subgraph cluster_1 {
-        label="Backend";
-        style=filled;
-        color=lightyellow;
-        api_server -> database;
-        api_server -> cache;
+
+    Draft --> review : Submit
+    review --> Published : All Approved
+    Published --> Archived : Deprecate
+    Published --> Draft : Revise
+    Archived --> [*]
+
+    note right of Draft : Author can edit freely
+    note left of Published : Visible to all users`,
+            er: `erDiagram
+    CUSTOMER ||--o{ ORDER : places
+    CUSTOMER {
+        int id PK
+        string name
+        string email UK
+        date created_at
     }
-    api_client -> api_server;
-}`
+    ORDER ||--|{ LINE_ITEM : contains
+    ORDER {
+        int id PK
+        int customer_id FK
+        date order_date
+        string status
+        decimal total
+    }
+    PRODUCT ||--o{ LINE_ITEM : "appears in"
+    PRODUCT {
+        int id PK
+        string name
+        string category
+        decimal price
+        int stock
+    }
+    LINE_ITEM {
+        int id PK
+        int order_id FK
+        int product_id FK
+        int quantity
+        decimal unit_price
+    }
+    CATEGORY ||--o{ PRODUCT : groups
+    CATEGORY {
+        int id PK
+        string name UK
+        string description
+    }`,
+            classDiagram: `classDiagram
+    class EventEmitter {
+        <<interface>>
+        +on(event, handler) void
+        +off(event, handler) void
+        +emit(event, data) void
+    }
+
+    class Logger {
+        <<abstract>>
+        -level: LogLevel
+        +info(msg: string) void
+        +warn(msg: string) void
+        +error(msg: string) void
+        #format(msg: string)* string
+    }
+
+    class ConsoleLogger {
+        #format(msg: string) string
+    }
+
+    class FileLogger {
+        -filePath: string
+        -stream: WriteStream
+        #format(msg: string) string
+        +rotate() void
+    }
+
+    class Application {
+        -logger: Logger
+        -config: Map~string, string~
+        +start() void
+        +stop() void
+    }
+
+    EventEmitter <|.. Application : implements
+    Logger <|-- ConsoleLogger
+    Logger <|-- FileLogger
+    Application --> Logger : uses
+    Application ..> EventEmitter : implements`,
+            gantt: `gantt
+    title Product Launch Plan
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+
+    section Research
+        Market analysis        : done, r1, 2026-01-01, 14d
+        User interviews        : done, r2, after r1, 10d
+        Competitive review     : done, r3, 2026-01-08, 14d
+
+    section Design
+        Wireframes             : active, d1, after r2, 7d
+        Visual design          : d2, after d1, 10d
+        Prototype              : d3, after d1, 14d
+        User testing           : d4, after d3, 7d
+
+    section Development
+        Backend API            : dev1, after d2, 21d
+        Frontend               : dev2, after d2, 21d
+        Integration            : dev3, after dev1, 7d
+
+    section Launch
+        Beta release           : milestone, m1, after dev3, 0d
+        Bug fixes              : l1, after m1, 14d
+        Public launch          : milestone, m2, after l1, 0d`,
+            pie: `pie showData
+    title Browser Market Share (2026)
+    "Chrome" : 62.5
+    "Safari" : 19.8
+    "Firefox" : 6.3
+    "Edge" : 5.1
+    "Samsung Internet" : 2.8
+    "Other" : 3.5`,
+            mindmap: `mindmap
+    root((Web Development))
+        Frontend
+            HTML
+                Semantic Elements
+                Accessibility
+            CSS
+                Flexbox
+                Grid
+                Animations
+            JavaScript
+                TypeScript
+                Frameworks
+                    React
+                    Vue
+                    Svelte
+        Backend
+            Languages
+                Node.js
+                Python
+                Go
+            Databases
+                SQL
+                    PostgreSQL
+                    MySQL
+                NoSQL
+                    MongoDB
+                    Redis
+            APIs
+                REST
+                GraphQL
+        DevOps
+            CI/CD
+            Containers
+            Cloud
+                AWS
+                GCP
+                Azure`,
+            timeline: `timeline
+    title History of Web Development
+    section Early Web (1990s)
+        1991 : First website goes live at CERN
+        1993 : Mosaic browser released
+             : HTML 2.0 specification
+        1995 : JavaScript created in 10 days
+             : PHP and Java released
+        1996 : CSS Level 1 published
+    section Dynamic Web (2000s)
+        2004 : Gmail launches
+             : "Web 2.0" coined
+        2006 : jQuery released
+        2008 : Chrome browser launched
+             : GitHub founded
+    section Modern Web (2010s)
+        2010 : AngularJS released
+        2013 : React released by Facebook
+        2014 : Vue.js released
+        2015 : ES6/ES2015 standard
+    section Current Era (2020s)
+        2020 : Deno 1.0 released
+        2022 : State of JS: TypeScript dominant
+        2024 : AI-assisted development mainstream`,
+            gitgraph: `gitGraph
+    commit id: "Initial commit"
+    commit id: "Add project structure"
+    branch develop
+    checkout develop
+    commit id: "Setup CI/CD"
+    commit id: "Add linting"
+    branch feature/auth
+    checkout feature/auth
+    commit id: "Add login page"
+    commit id: "Add JWT middleware"
+    commit id: "Add user sessions"
+    checkout develop
+    merge feature/auth id: "Merge auth feature"
+    branch feature/dashboard
+    checkout feature/dashboard
+    commit id: "Dashboard layout"
+    commit id: "Add charts"
+    checkout develop
+    merge feature/dashboard id: "Merge dashboard"
+    checkout main
+    merge develop id: "Release v1.0" tag: "v1.0"
+    checkout develop
+    commit id: "Start v1.1 work"`,
+            quadrant: `quadrantChart
+    title Task Prioritisation Matrix
+    x-axis Low Effort --> High Effort
+    y-axis Low Impact --> High Impact
+    quadrant-1 Do First
+    quadrant-2 Schedule
+    quadrant-3 Delegate
+    quadrant-4 Eliminate
+    Fix login bug: [0.2, 0.9]
+    Update docs: [0.3, 0.4]
+    Redesign homepage: [0.8, 0.7]
+    Add dark mode: [0.6, 0.5]
+    Remove legacy API: [0.9, 0.3]
+    Cache optimisation: [0.4, 0.8]
+    Update dependencies: [0.3, 0.6]
+    Rewrite tests: [0.7, 0.4]`,
+            sankey: `sankey-beta
+    Source Code,Build,40
+    Source Code,Lint,20
+    Source Code,Test,30
+    Build,Staging,35
+    Build,Failed,5
+    Lint,Passed,18
+    Lint,Warnings,2
+    Test,Passed,25
+    Test,Failed,5
+    Staging,Production,30
+    Staging,Rollback,5
+    Passed,Staging,18
+    Passed,Staging,25`
         };
-
-        // Initialize Viz.js
-        Viz.instance().then(viz => {
-            vizInstance = viz;
-            loadState();
-        }).catch(err => {
-            preview.innerHTML = '<span class="preview-error">Failed to load Graphviz engine: ' + escapeHtml(err.message) + '</span>';
-        });
 
         function escapeHtml(str) {
             const div = document.createElement('div');
@@ -305,25 +554,22 @@
             }
         }
 
-        function render() {
-            const dot = textarea.value.trim();
-            if (!dot) {
-                preview.innerHTML = '<span class="preview-placeholder">Enter DOT notation and press Render</span>';
-                return;
-            }
-            if (!vizInstance) {
-                showStatus('Graphviz engine still loading, please wait...', 'info');
+        async function render() {
+            const src = textarea.value.trim();
+            if (!src) {
+                preview.innerHTML = '<span class="preview-placeholder">Enter Mermaid syntax and press Render</span>';
                 return;
             }
             try {
-                const svg = vizInstance.renderSVGElement(dot);
-                preview.innerHTML = '';
-                preview.appendChild(svg);
-                saveToStorage(dot);
+                renderCounter++;
+                const id = 'mermaid-diagram-' + renderCounter;
+                const { svg } = await mermaid.render(id, src);
+                preview.innerHTML = svg;
+                saveToStorage(src);
                 statusEl.textContent = '';
                 statusEl.className = 'status';
             } catch (e) {
-                preview.innerHTML = '<span class="preview-error">' + escapeHtml(e.message) + '</span>';
+                preview.innerHTML = '<span class="preview-error">' + escapeHtml(e.message || String(e)) + '</span>';
             }
         }
 
@@ -334,7 +580,6 @@
 
         textarea.addEventListener('input', debouncedRender);
 
-        // Tab key inserts a tab character
         textarea.addEventListener('keydown', function(e) {
             if (e.key === 'Tab') {
                 e.preventDefault();
@@ -346,31 +591,31 @@
             }
         });
 
-        function loadExample() {
+        window.loadExample = function() {
             const sel = document.getElementById('examples');
             const key = sel.value;
             if (!key) return;
             textarea.value = EXAMPLES[key];
             sel.value = '';
             render();
-        }
+        };
 
-        function copySource() {
+        window.copySource = function() {
             const text = textarea.value;
             if (!text.trim()) {
                 showStatus('Nothing to copy', 'error');
                 return;
             }
             navigator.clipboard.writeText(text).then(() => {
-                showStatus('DOT source copied to clipboard', 'success');
+                showStatus('Mermaid source copied to clipboard', 'success');
             }).catch(() => {
                 textarea.select();
                 document.execCommand('copy');
-                showStatus('DOT source copied to clipboard', 'success');
+                showStatus('Mermaid source copied to clipboard', 'success');
             });
-        }
+        };
 
-        function copySVG() {
+        window.copySVG = function() {
             const svg = preview.querySelector('svg');
             if (!svg) {
                 showStatus('No diagram to copy', 'error');
@@ -382,9 +627,9 @@
             }).catch(() => {
                 showStatus('Failed to copy SVG', 'error');
             });
-        }
+        };
 
-        function downloadSVG() {
+        window.downloadSVG = function() {
             const svg = preview.querySelector('svg');
             if (!svg) {
                 showStatus('No diagram to download', 'error');
@@ -399,9 +644,9 @@
             a.click();
             URL.revokeObjectURL(url);
             showStatus('SVG downloaded', 'success');
-        }
+        };
 
-        function downloadPNG() {
+        window.downloadPNG = function() {
             const svg = preview.querySelector('svg');
             if (!svg) {
                 showStatus('No diagram to download', 'error');
@@ -440,50 +685,50 @@
             };
 
             img.src = url;
-        }
+        };
 
-        function shareURL() {
-            const dot = textarea.value.trim();
-            if (!dot) {
+        window.shareURL = function() {
+            const src = textarea.value.trim();
+            if (!src) {
                 showStatus('Nothing to share', 'error');
                 return;
             }
-            const encoded = encodeURIComponent(dot);
+            const encoded = encodeURIComponent(src);
             const maxLength = 2000;
             if (encoded.length > maxLength) {
                 showStatus('Diagram too large to share via URL (' + encoded.length + ' chars, max ' + maxLength + ')', 'error');
                 return;
             }
-            const url = window.location.origin + window.location.pathname + '?dot=' + encoded;
-            window.history.replaceState({}, '', '?dot=' + encoded);
+            const url = window.location.origin + window.location.pathname + '?src=' + encoded;
+            window.history.replaceState({}, '', '?src=' + encoded);
             navigator.clipboard.writeText(url).then(() => {
                 showStatus('URL copied to clipboard', 'success');
             }).catch(() => {
                 showStatus('URL updated - copy from address bar', 'info');
             });
-        }
+        };
 
-        function clearAll() {
+        window.clearAll = function() {
             textarea.value = '';
-            preview.innerHTML = '<span class="preview-placeholder">Enter DOT notation and press Render</span>';
+            preview.innerHTML = '<span class="preview-placeholder">Enter Mermaid syntax and press Render</span>';
             statusEl.textContent = '';
             statusEl.className = 'status';
             localStorage.removeItem(STORAGE_KEY);
             window.history.replaceState({}, '', window.location.pathname);
-        }
+        };
 
-        function saveToStorage(dot) {
+        function saveToStorage(src) {
             try {
-                localStorage.setItem(STORAGE_KEY, dot);
+                localStorage.setItem(STORAGE_KEY, src);
             } catch (e) { /* ignore quota errors */ }
         }
 
         function loadState() {
             const params = new URLSearchParams(window.location.search);
-            const dotParam = params.get('dot');
-            if (dotParam) {
+            const srcParam = params.get('src');
+            if (srcParam) {
                 try {
-                    textarea.value = decodeURIComponent(dotParam);
+                    textarea.value = decodeURIComponent(srcParam);
                     showStatus('Loaded diagram from URL', 'info');
                     render();
                     return;
@@ -499,7 +744,6 @@
                 return;
             }
 
-            // Load a default example
             textarea.value = EXAMPLES.flowchart;
             render();
         }
@@ -541,6 +785,9 @@
 
         resizeHandle.addEventListener('mousedown', startResize);
         resizeHandle.addEventListener('touchstart', startResize);
+
+        window.render = render;
+        loadState();
     </script>
 </body>
 </html>
