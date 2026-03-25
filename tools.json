@@ -71,6 +71,22 @@
       "category": "dev",
       "created": "2026-03-15",
       "updated": "2026-03-15"
+    },
+    {
+      "slug": "json-to-yaml",
+      "name": "JSON to YAML",
+      "description": "Convert JSON to YAML in block, flow, and quoted styles. Shareable via URL.",
+      "category": "data",
+      "created": "2026-03-25",
+      "updated": "2026-03-25"
+    },
+    {
+      "slug": "yaml-to-json",
+      "name": "YAML to JSON",
+      "description": "Convert YAML to JSON with pretty or compact output. Shareable via URL.",
+      "category": "data",
+      "created": "2026-03-25",
+      "updated": "2026-03-25"
     }
   ],
   "categories": {

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML to JSON - tools.julianwyngaard.dev</title>
+    <script src="https://cdn.jsdelivr.net/npm/js-yaml@4/dist/js-yaml.min.js"></script>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #e5e5e5;
+        }
+        button.primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        button.primary:hover {
+            background: #0055aa;
+        }
+        .buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .editor-layout {
+            display: flex;
+            gap: 1.5rem;
+            min-height: 500px;
+        }
+        .input-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        .output-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        .output-section {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        .output-header label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .output-header button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        .input-pane label {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+        }
+        .toggle-row label {
+            font-weight: normal;
+            color: #555;
+        }
+        textarea {
+            width: 100%;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 14px;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        .input-pane textarea {
+            flex: 1;
+        }
+        .output-section textarea {
+            flex: 1;
+            min-height: 120px;
+        }
+        .status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #e7f3ff;
+            color: #004085;
+        }
+        .status:empty {
+            display: none;
+        }
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .editor-layout {
+                flex-direction: column;
+                min-height: auto;
+            }
+            .input-pane, .output-pane {
+                flex-basis: auto;
+            }
+            textarea {
+                min-height: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>YAML to JSON</h1>
+    <p>Paste YAML to convert it to JSON.</p>
+
+    <div class="toolbar">
+        <button onclick="clearAll()">Clear</button>
+        <button onclick="shareURL()">Share URL</button>
+    </div>
+
+    <div class="editor-layout">
+        <div class="input-pane">
+            <label for="yaml-input">YAML Input</label>
+            <textarea id="yaml-input" placeholder="Paste your YAML here..."></textarea>
+        </div>
+
+        <div class="output-pane">
+            <div class="output-section">
+                <div class="output-header">
+                    <label>JSON Output</label>
+                    <div class="toggle-row">
+                        <input type="checkbox" id="pretty-toggle" checked>
+                        <label for="pretty-toggle">Pretty</label>
+                    </div>
+                    <button onclick="copyOutput()">Copy</button>
+                </div>
+                <textarea id="json-output" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="json-to-yaml.html">JSON to YAML</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        // ABOUTME: YAML to JSON converter with pretty/compact output toggle
+        // ABOUTME: Uses js-yaml CDN, localStorage persistence, URL sharing, and live conversion
+
+        const STORAGE_KEY = 'yaml-to-json-state';
+        const yamlInput = document.getElementById('yaml-input');
+        const jsonOutput = document.getElementById('json-output');
+        const prettyToggle = document.getElementById('pretty-toggle');
+        const statusEl = document.getElementById('status');
+
+        let debounceTimer = null;
+
+        function showStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                    statusEl.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function convert() {
+            const yamlStr = yamlInput.value;
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+
+            if (!yamlStr.trim()) {
+                jsonOutput.value = '';
+                return;
+            }
+
+            try {
+                const obj = jsyaml.load(yamlStr);
+                if (prettyToggle.checked) {
+                    jsonOutput.value = JSON.stringify(obj, null, 2);
+                } else {
+                    jsonOutput.value = JSON.stringify(obj);
+                }
+            } catch (e) {
+                jsonOutput.value = '';
+                showStatus('Invalid YAML: ' + e.message, 'error');
+            }
+        }
+
+        function debouncedConvert() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(convert, 200);
+        }
+
+        function copyOutput() {
+            if (!jsonOutput.value) {
+                showStatus('Nothing to copy', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(jsonOutput.value).then(() => {
+                showStatus('Copied to clipboard', 'success');
+            }).catch(() => {
+                jsonOutput.select();
+                document.execCommand('copy');
+                showStatus('Copied to clipboard', 'success');
+            });
+        }
+
+        function clearAll() {
+            yamlInput.value = '';
+            jsonOutput.value = '';
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
+        function shareURL() {
+            const yaml = yamlInput.value.trim();
+            if (!yaml) {
+                showStatus('Nothing to share', 'error');
+                return;
+            }
+            try {
+                jsyaml.load(yaml);
+            } catch (e) {
+                showStatus('Cannot share invalid YAML: ' + e.message, 'error');
+                return;
+            }
+            const encoded = encodeURIComponent(yaml);
+            if (encoded.length > 1500) {
+                showStatus('YAML too large to share via URL (' + encoded.length + ' chars, max 1500)', 'error');
+                return;
+            }
+            const url = window.location.origin + window.location.pathname + '?yaml=' + encoded;
+            window.history.replaceState({}, '', '?yaml=' + encoded);
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('URL copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('URL updated - copy from address bar', 'info');
+            });
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, yamlInput.value);
+            } catch (e) {
+                console.warn('Failed to save to localStorage:', e);
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    yamlInput.value = stored;
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Failed to load from localStorage:', e);
+            }
+            return false;
+        }
+
+        const SAMPLE_YAML = `server:
+  host: localhost
+  port: 8080
+  debug: true
+database:
+  url: "postgres://localhost:5432/mydb"
+  pool_size: 5
+  ssl: false
+features:
+  - auth
+  - logging
+  - rate-limit
+version: "2.1.0"
+maintainer: null`;
+
+        function init() {
+            const params = new URLSearchParams(window.location.search);
+            const yamlParam = params.get('yaml');
+
+            if (yamlParam) {
+                try {
+                    yamlInput.value = decodeURIComponent(yamlParam);
+                    showStatus('Loaded YAML from URL', 'info');
+                } catch (e) {
+                    showStatus('Failed to load YAML from URL', 'error');
+                }
+            } else if (!loadFromStorage()) {
+                yamlInput.value = SAMPLE_YAML;
+            }
+
+            convert();
+        }
+
+        yamlInput.addEventListener('input', () => {
+            debouncedConvert();
+            saveToStorage();
+        });
+
+        prettyToggle.addEventListener('change', convert);
+
+        init();
+    </script>
+</body>
+</html>
