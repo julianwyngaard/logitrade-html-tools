@@ -98,9 +98,12 @@
         .toggle-row {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
+            gap: 0.25rem;
+            font-size: 0.8rem;
+        }
+        .toggle-row label {
+            font-weight: normal;
+            color: #555;
         }
         textarea {
             width: 100%;
@@ -184,11 +187,11 @@
             <div class="output-section">
                 <div class="output-header">
                     <label>JSON Output</label>
+                    <div class="toggle-row">
+                        <input type="checkbox" id="pretty-toggle" checked>
+                        <label for="pretty-toggle">Pretty</label>
+                    </div>
                     <button onclick="copyOutput()">Copy</button>
-                </div>
-                <div class="toggle-row">
-                    <input type="checkbox" id="pretty-toggle" checked>
-                    <label for="pretty-toggle">Pretty print</label>
                 </div>
                 <textarea id="json-output" readonly></textarea>
             </div>
