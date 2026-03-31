@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Base64 Encoder / Decoder - tools.julianwyngaard.dev</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 {
+            margin-bottom: 0.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #e5e5e5;
+        }
+        button.primary {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        button.primary:hover {
+            background: #0055aa;
+        }
+        .buttons {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+            align-items: center;
+        }
+        .mode-toggle {
+            display: flex;
+            gap: 0;
+            margin-bottom: 1rem;
+        }
+        .mode-toggle button {
+            border-radius: 0;
+            flex: 1;
+        }
+        .mode-toggle button:first-child {
+            border-radius: 4px 0 0 4px;
+        }
+        .mode-toggle button:last-child {
+            border-radius: 0 4px 4px 0;
+        }
+        .mode-toggle button.active {
+            background: #0066cc;
+            color: white;
+            border-color: #0066cc;
+        }
+        .editor-layout {
+            display: flex;
+            gap: 1.5rem;
+            min-height: 400px;
+        }
+        .pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 200px;
+        }
+        .pane-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        .pane-header label {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .pane-header button {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.8rem;
+        }
+        textarea {
+            width: 100%;
+            flex: 1;
+            font-family: 'SF Mono', Monaco, Consolas, monospace;
+            font-size: 14px;
+            padding: 1rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            resize: vertical;
+            min-height: 300px;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+        .status {
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .status.info {
+            background: #e7f3ff;
+            color: #004085;
+        }
+        .status:empty {
+            display: none;
+        }
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 768px) {
+            .editor-layout {
+                flex-direction: column;
+                min-height: auto;
+            }
+            textarea {
+                min-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>Base64 Encoder / Decoder</h1>
+    <p>Encode text to Base64 or decode Base64 back to text.</p>
+
+    <div class="mode-toggle">
+        <button id="btn-encode" class="active" onclick="setMode('encode')">Encode</button>
+        <button id="btn-decode" onclick="setMode('decode')">Decode</button>
+    </div>
+
+    <div class="buttons">
+        <button class="primary" onclick="convert()">Convert</button>
+        <button onclick="clearAll()">Clear</button>
+        <button onclick="shareURL()">Share URL</button>
+    </div>
+
+    <div class="editor-layout">
+        <div class="pane">
+            <div class="pane-header">
+                <label id="input-label">Text Input</label>
+            </div>
+            <textarea id="input" placeholder="Enter text to encode..."></textarea>
+        </div>
+
+        <div class="pane">
+            <div class="pane-header">
+                <label id="output-label">Base64 Output</label>
+                <button onclick="copyOutput()">Copy</button>
+            </div>
+            <textarea id="output" readonly></textarea>
+        </div>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        // ABOUTME: Base64 encoder/decoder with live conversion and mode toggle
+        // ABOUTME: Uses localStorage persistence, URL sharing, and encode/decode modes
+
+        const STORAGE_KEY = 'base64-encoder-decoder-state';
+        const inputEl = document.getElementById('input');
+        const outputEl = document.getElementById('output');
+        const statusEl = document.getElementById('status');
+        const inputLabel = document.getElementById('input-label');
+        const outputLabel = document.getElementById('output-label');
+        const btnEncode = document.getElementById('btn-encode');
+        const btnDecode = document.getElementById('btn-decode');
+
+        let mode = 'encode';
+        let debounceTimer = null;
+
+        function showStatus(message, type) {
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + type;
+            if (type === 'success' || type === 'info') {
+                setTimeout(() => {
+                    statusEl.textContent = '';
+                    statusEl.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function setMode(newMode) {
+            mode = newMode;
+            btnEncode.className = mode === 'encode' ? 'active' : '';
+            btnDecode.className = mode === 'decode' ? 'active' : '';
+
+            if (mode === 'encode') {
+                inputLabel.textContent = 'Text Input';
+                outputLabel.textContent = 'Base64 Output';
+                inputEl.placeholder = 'Enter text to encode...';
+            } else {
+                inputLabel.textContent = 'Base64 Input';
+                outputLabel.textContent = 'Decoded Text';
+                inputEl.placeholder = 'Enter Base64 to decode...';
+            }
+
+            convert();
+            saveToStorage();
+        }
+
+        function convert() {
+            const value = inputEl.value;
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+
+            if (!value.trim()) {
+                outputEl.value = '';
+                return;
+            }
+
+            if (mode === 'encode') {
+                try {
+                    outputEl.value = btoa(unescape(encodeURIComponent(value)));
+                } catch (e) {
+                    outputEl.value = '';
+                    showStatus('Encoding error: ' + e.message, 'error');
+                }
+            } else {
+                try {
+                    outputEl.value = decodeURIComponent(escape(atob(value.trim())));
+                } catch (e) {
+                    outputEl.value = '';
+                    showStatus('Invalid Base64: ' + e.message, 'error');
+                }
+            }
+        }
+
+        function debouncedConvert() {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(convert, 150);
+        }
+
+        function copyOutput() {
+            if (!outputEl.value) {
+                showStatus('Nothing to copy', 'error');
+                return;
+            }
+            navigator.clipboard.writeText(outputEl.value).then(() => {
+                showStatus('Copied to clipboard', 'success');
+            }).catch(() => {
+                outputEl.select();
+                document.execCommand('copy');
+                showStatus('Copied to clipboard', 'success');
+            });
+        }
+
+        function clearAll() {
+            inputEl.value = '';
+            outputEl.value = '';
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            window.history.replaceState({}, '', window.location.pathname);
+        }
+
+        function shareURL() {
+            const value = inputEl.value.trim();
+            if (!value) {
+                showStatus('Nothing to share', 'error');
+                return;
+            }
+            const params = new URLSearchParams();
+            params.set('mode', mode);
+            params.set('input', value);
+            const qs = params.toString();
+            if (qs.length > 1500) {
+                showStatus('Input too large to share via URL (' + qs.length + ' chars, max 1500)', 'error');
+                return;
+            }
+            const url = window.location.origin + window.location.pathname + '?' + qs;
+            window.history.replaceState({}, '', '?' + qs);
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('URL copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('URL updated - copy from address bar', 'info');
+            });
+        }
+
+        function saveToStorage() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    mode: mode,
+                    input: inputEl.value
+                }));
+            } catch (e) {
+                console.warn('Failed to save to localStorage:', e);
+            }
+        }
+
+        function loadFromStorage() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const state = JSON.parse(stored);
+                    if (state.mode) setMode(state.mode);
+                    if (state.input) inputEl.value = state.input;
+                    return true;
+                }
+            } catch (e) {
+                console.warn('Failed to load from localStorage:', e);
+            }
+            return false;
+        }
+
+        function init() {
+            const params = new URLSearchParams(window.location.search);
+            const urlMode = params.get('mode');
+            const urlInput = params.get('input');
+
+            if (urlInput) {
+                if (urlMode === 'decode') setMode('decode');
+                else setMode('encode');
+                inputEl.value = urlInput;
+                showStatus('Loaded from URL', 'info');
+            } else if (!loadFromStorage()) {
+                inputEl.value = 'Hello, World!';
+            }
+
+            convert();
+        }
+
+        inputEl.addEventListener('input', () => {
+            debouncedConvert();
+            saveToStorage();
+        });
+
+        init();
+    </script>
+</body>
+</html>
