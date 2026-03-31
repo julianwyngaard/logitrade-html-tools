@@ -207,6 +207,7 @@
 
         let mode = 'encode';
         let debounceTimer = null;
+        const inputs = { encode: '', decode: '' };
 
         function showStatus(message, type) {
             statusEl.textContent = message;
@@ -220,6 +221,16 @@
         }
 
         function setMode(newMode) {
+            if (mode === newMode) return;
+
+            // Save current input to the old mode's slot
+            inputs[mode] = inputEl.value;
+
+            // If the new mode's slot is empty, auto-populate from current output
+            if (!inputs[newMode] && outputEl.value) {
+                inputs[newMode] = outputEl.value;
+            }
+
             mode = newMode;
             btnEncode.className = mode === 'encode' ? 'active' : '';
             btnDecode.className = mode === 'decode' ? 'active' : '';
@@ -233,6 +244,9 @@
                 outputLabel.textContent = 'Decoded Text';
                 inputEl.placeholder = 'Enter Base64 to decode...';
             }
+
+            // Restore the new mode's saved input
+            inputEl.value = inputs[mode];
 
             convert();
             saveToStorage();
@@ -287,6 +301,8 @@
         function clearAll() {
             inputEl.value = '';
             outputEl.value = '';
+            inputs.encode = '';
+            inputs.decode = '';
             statusEl.textContent = '';
             statusEl.className = 'status';
             try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
@@ -317,10 +333,13 @@
         }
 
         function saveToStorage() {
+            // Keep inputs object in sync with current textarea
+            inputs[mode] = inputEl.value;
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify({
                     mode: mode,
-                    input: inputEl.value
+                    encodeInput: inputs.encode,
+                    decodeInput: inputs.decode
                 }));
             } catch (e) {
                 console.warn('Failed to save to localStorage:', e);
@@ -332,8 +351,26 @@
                 const stored = localStorage.getItem(STORAGE_KEY);
                 if (stored) {
                     const state = JSON.parse(stored);
-                    if (state.mode) setMode(state.mode);
-                    if (state.input) inputEl.value = state.input;
+                    // Support legacy format
+                    if (state.encodeInput != null) inputs.encode = state.encodeInput;
+                    if (state.decodeInput != null) inputs.decode = state.decodeInput;
+                    if (state.input && !state.encodeInput && !state.decodeInput) {
+                        inputs[state.mode || 'encode'] = state.input;
+                    }
+                    const savedMode = state.mode || 'encode';
+                    mode = savedMode;
+                    btnEncode.className = mode === 'encode' ? 'active' : '';
+                    btnDecode.className = mode === 'decode' ? 'active' : '';
+                    if (mode === 'encode') {
+                        inputLabel.textContent = 'Text Input';
+                        outputLabel.textContent = 'Base64 Output';
+                        inputEl.placeholder = 'Enter text to encode...';
+                    } else {
+                        inputLabel.textContent = 'Base64 Input';
+                        outputLabel.textContent = 'Decoded Text';
+                        inputEl.placeholder = 'Enter Base64 to decode...';
+                    }
+                    inputEl.value = inputs[mode];
                     return true;
                 }
             } catch (e) {
@@ -348,11 +385,24 @@
             const urlInput = params.get('input');
 
             if (urlInput) {
-                if (urlMode === 'decode') setMode('decode');
-                else setMode('encode');
+                const targetMode = urlMode === 'decode' ? 'decode' : 'encode';
+                inputs[targetMode] = urlInput;
+                mode = targetMode;
+                btnEncode.className = mode === 'encode' ? 'active' : '';
+                btnDecode.className = mode === 'decode' ? 'active' : '';
+                if (mode === 'encode') {
+                    inputLabel.textContent = 'Text Input';
+                    outputLabel.textContent = 'Base64 Output';
+                    inputEl.placeholder = 'Enter text to encode...';
+                } else {
+                    inputLabel.textContent = 'Base64 Input';
+                    outputLabel.textContent = 'Decoded Text';
+                    inputEl.placeholder = 'Enter Base64 to decode...';
+                }
                 inputEl.value = urlInput;
                 showStatus('Loaded from URL', 'info');
             } else if (!loadFromStorage()) {
+                inputs.encode = 'Hello, World!';
                 inputEl.value = 'Hello, World!';
             }
 
@@ -360,6 +410,7 @@
         }
 
         inputEl.addEventListener('input', () => {
+            inputs[mode] = inputEl.value;
             debouncedConvert();
             saveToStorage();
         });
