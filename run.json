@@ -216,7 +216,7 @@
     "kind": "running"
   },
   "status_updated_at": "2026-06-24T19:29:02.595800Z",
-  "last_event_at": "2026-06-24T19:29:09.760672Z",
+  "last_event_at": "2026-06-24T19:29:15.658261Z",
   "pending_control": null,
   "checkpoints": [
     {
@@ -256,9 +256,9 @@
       "diff": {}
     },
     {
-      "seq": 0,
+      "seq": 37,
       "checkpoint": {
-        "timestamp": "2026-06-24T19:29:10.068717Z",
+        "timestamp": "2026-06-24T19:29:15.658130Z",
         "current_node": "greet",
         "completed_nodes": [
           "start",
@@ -266,29 +266,25 @@
         ],
         "node_retries": {},
         "context_values": {
-          "internal.thread_id": "start",
-          "internal.retry_count.start": 0,
-          "failure_signature": "",
-          "thread.start.current_node": "greet",
           "graph.rankdir": "LR",
-          "response.greet": "Hello! I’m your AI coding assistant running in this workspace.\n\nThis is a test of the Fabro workflow engine: a simple end-to-end check that a task can be received, understood, and completed through the agent workflow. No code changes are needed for this request.",
-          "internal.node_visit_count": 1,
-          "failure_class": "",
-          "outcome": "succeeded",
-          "internal.work_dir": "/home/daytona/workspace/logitrade-html-tools",
-          "internal.run_id": "01KVXHPRN9KBYD1544SZHTJRWW",
-          "current_node": "greet",
-          "last_stage": "greet",
-          "last_response": "Hello! I’m your AI coding assistant running in this workspace.\n\nThis is a test of the Fabro workflow engine: a simple end-to-end check that a task can be received, understood, and completed through ",
-          "internal.fidelity": "compact",
+          "failure_signature": "",
           "graph.goal": "Say hello and demonstrate a basic Fabro workflow",
-          "internal.retry_count.greet": 0
+          "thread.start.current_node": "greet",
+          "outcome": "succeeded",
+          "internal.run_id": "01KVXHPRN9KBYD1544SZHTJRWW",
+          "failure_class": "",
+          "internal.retry_count.start": 0,
+          "internal.thread_id": "start",
+          "internal.fidelity": "compact",
+          "last_stage": "greet",
+          "response.greet": "Hello! I’m your AI coding assistant running in this workspace.\n\nThis is a test of the Fabro workflow engine: a simple end-to-end check that a task can be received, understood, and completed through the agent workflow. No code changes are needed for this request.",
+          "internal.retry_count.greet": 0,
+          "internal.work_dir": "/home/daytona/workspace/logitrade-html-tools",
+          "current_node": "greet",
+          "last_response": "Hello! I’m your AI coding assistant running in this workspace.\n\nThis is a test of the Fabro workflow engine: a simple end-to-end check that a task can be received, understood, and completed through ",
+          "internal.node_visit_count": 1
         },
         "node_outcomes": {
-          "start": {
-            "status": "succeeded",
-            "usage": null
-          },
           "greet": {
             "status": "succeeded",
             "context_updates": {
@@ -324,18 +320,75 @@
               "tool_time_ms": 0,
               "active_time_ms": 1711
             }
+          },
+          "start": {
+            "status": "succeeded",
+            "usage": null
           }
         },
         "next_node_id": "exit",
+        "git_commit_sha": "1c8eb73464cbe13b660099a249f90296a49f4b59",
         "node_visits": {
           "start": 1,
           "greet": 1
         }
       },
-      "diff": {}
+      "diff": {
+        "summary": {
+          "files_changed": 0,
+          "additions": 0,
+          "deletions": 0
+        }
+      }
     }
   ],
-  "conclusion": null,
+  "conclusion": {
+    "timestamp": "2026-06-24T19:29:15.676159Z",
+    "status": "succeeded",
+    "timing": {
+      "wall_time_ms": 13064,
+      "inference_time_ms": 1711,
+      "tool_time_ms": 0,
+      "active_time_ms": 1711
+    },
+    "final_git_commit_sha": "1c8eb73464cbe13b660099a249f90296a49f4b59",
+    "stages": [
+      {
+        "stage_id": "start",
+        "stage_label": "start",
+        "timing": {
+          "wall_time_ms": 0,
+          "inference_time_ms": 0,
+          "tool_time_ms": 0,
+          "active_time_ms": 0
+        },
+        "retries": 0
+      },
+      {
+        "stage_id": "greet",
+        "stage_label": "greet",
+        "timing": {
+          "wall_time_ms": 5371,
+          "inference_time_ms": 1711,
+          "tool_time_ms": 0,
+          "active_time_ms": 1711
+        },
+        "billing_usd_micros": 14030,
+        "retries": 0
+      }
+    ],
+    "billing": {
+      "input_tokens": 2452,
+      "output_tokens": 59,
+      "total_tokens": 2511,
+      "reasoning_tokens": 0,
+      "cache_read_tokens": 0,
+      "cache_write_tokens": 0,
+      "total_usd_micros": 14030
+    },
+    "total_retries": 0,
+    "diff": {}
+  },
   "sandbox": {
     "kind": "ready",
     "plan": {
@@ -365,7 +418,12 @@
       "first_event_seq": 21,
       "prompt": null,
       "response": null,
-      "completion": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": "Stage completed: greet",
+        "failure_reason": null,
+        "timestamp": "2026-06-24T19:29:10.068567Z"
+      },
       "provider_used": {
         "mode": "agent",
         "provider": "openai",
@@ -378,6 +436,12 @@
       "output": null,
       "started_at": "2026-06-24T19:29:04.697017Z",
       "handler": "agent",
+      "timing": {
+        "wall_time_ms": 5371,
+        "inference_time_ms": 1711,
+        "tool_time_ms": 0,
+        "active_time_ms": 1711
+      },
       "usage": {
         "input_tokens": 2452,
         "output_tokens": 59,
@@ -559,7 +623,41 @@
         ],
         "warnings": []
       },
-      "state": "running"
+      "state": "succeeded"
+    },
+    "exit@1": {
+      "first_event_seq": 40,
+      "prompt": null,
+      "response": null,
+      "completion": {
+        "outcome": "succeeded",
+        "notes": null,
+        "failure_reason": null,
+        "timestamp": "2026-06-24T19:29:15.658261Z"
+      },
+      "provider_used": null,
+      "diff": null,
+      "script_invocation": null,
+      "script_timing": null,
+      "parallel_results": null,
+      "output": null,
+      "started_at": "2026-06-24T19:29:15.658230Z",
+      "handler": "exit",
+      "timing": {
+        "wall_time_ms": 0,
+        "inference_time_ms": 0,
+        "tool_time_ms": 0,
+        "active_time_ms": 0
+      },
+      "usage": {
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "total_tokens": 0,
+        "reasoning_tokens": 0,
+        "cache_read_tokens": 0,
+        "cache_write_tokens": 0
+      },
+      "state": "succeeded"
     },
     "start@1": {
       "first_event_seq": 17,
