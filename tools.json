@@ -33,6 +33,14 @@
       "updated": "2026-01-24"
     },
     {
+      "slug": "dns-lookup",
+      "name": "DNS Lookup",
+      "description": "Query live DNS records over DNS-over-HTTPS, grouped by record type. Shareable via URL.",
+      "category": "networking",
+      "created": "2026-06-24",
+      "updated": "2026-06-24"
+    },
+    {
       "slug": "lorem-ipsum-generator",
       "name": "Lorem Ipsum Generator",
       "description": "Generate placeholder text by words, characters, sentences, or paragraphs. Shareable via URL.",

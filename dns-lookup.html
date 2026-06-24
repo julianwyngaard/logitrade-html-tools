@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DNS Lookup</title>
+<style>
+* { box-sizing: border-box; }
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem;
+    line-height: 1.6;
+    color: #333;
+}
+h1 { margin-bottom: 0.5rem; }
+h2 { font-size: 1.15rem; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #0066cc;
+    text-decoration: none;
+}
+.back-link:hover { text-decoration: underline; }
+p.intro { color: #555; margin-top: 0; }
+
+.controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin: 1rem 0 0.25rem;
+}
+.field { display: flex; flex-direction: column; gap: 0.25rem; }
+.field.grow { flex: 1 1 280px; }
+.field label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #555;
+}
+input[type="text"], select {
+    width: 100%;
+    padding: 0.75rem;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 0.9rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+}
+select { cursor: pointer; }
+input[type="text"]:focus, select:focus {
+    outline: none;
+    border-color: #0066cc;
+}
+
+.buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+button {
+    padding: 0.5rem 1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #f5f5f5;
+}
+button:hover { background: #e5e5e5; }
+button:disabled { opacity: 0.55; cursor: progress; }
+button.primary { background: #0066cc; color: white; border-color: #0066cc; }
+button.primary:hover { background: #0055aa; }
+
+.status {
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+.status.success { background: #d4edda; color: #155724; }
+.status.error   { background: #f8d7da; color: #721c24; }
+.status.info    { background: #e7f3ff; color: #004085; }
+.status:empty   { display: none; }
+
+.summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    margin-top: 1rem;
+}
+.summary:empty { display: none; }
+.pill {
+    display: inline-block;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: #eef1f4;
+    color: #444;
+}
+.pill.ok      { background: #d4edda; color: #155724; }
+.pill.bad     { background: #f8d7da; color: #721c24; }
+.pill.flag    { background: #e7f3ff; color: #004085; }
+.pill.muted   { background: #f0f0f0; color: #777; font-weight: 500; }
+
+.record-group {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    margin-top: 1rem;
+    overflow: hidden;
+}
+.record-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    background: #f9f9f9;
+    border-bottom: 1px solid #eee;
+}
+.type-tag {
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #fff;
+    background: #0066cc;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+}
+.record-head .count { font-size: 0.85rem; color: #888; }
+.record-head .section { font-size: 0.75rem; color: #999; margin-left: auto; text-transform: uppercase; letter-spacing: 0.05em; }
+
+.record-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid #f0f0f0;
+}
+.record-row:last-child { border-bottom: none; }
+.record-row .data {
+    flex: 1;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+.record-row .ttl {
+    font-size: 0.78rem;
+    color: #888;
+    white-space: nowrap;
+    padding-top: 0.1rem;
+}
+.empty-note { padding: 0.6rem 0.9rem; color: #888; font-size: 0.9rem; }
+
+.copy-btn {
+    flex: none;
+    padding: 0.25rem;
+    line-height: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+.copy-btn:hover { background: none; }
+.copy-btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: #555;
+    fill: none;
+}
+.copy-btn.copied svg { stroke: #155724; }
+
+details.raw {
+    margin-top: 1.5rem;
+    border: 1px solid #eee;
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+}
+details.raw summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #0066cc;
+    font-weight: 600;
+}
+details.raw pre {
+    background: #f5f5f5;
+    padding: 0.75rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-family: 'SF Mono', Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    margin-bottom: 0;
+}
+
+footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    color: #666;
+    font-size: 0.9rem;
+}
+footer a { color: #0066cc; }
+
+@media (max-width: 600px) {
+    .field.grow { flex-basis: 100%; }
+    .field { flex: 1 1 100%; }
+    body { font-size: 0.95rem; }
+}
+</style>
+</head>
+<body>
+<a href="index.html" class="back-link">&larr; All Tools</a>
+<h1>DNS Lookup</h1>
+<p class="intro">Query live DNS records over DNS-over-HTTPS, straight from your browser. Pick a record type, choose a resolver, and inspect the answers. Shareable via URL.</p>
+
+<div class="controls">
+    <div class="field grow">
+        <label for="domain">Domain name</label>
+        <input type="text" id="domain" placeholder="example.com" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off">
+    </div>
+    <div class="field">
+        <label for="type">Record type</label>
+        <select id="type">
+            <option value="ALL">All common</option>
+            <option value="A">A</option>
+            <option value="AAAA">AAAA</option>
+            <option value="CNAME">CNAME</option>
+            <option value="MX">MX</option>
+            <option value="NS">NS</option>
+            <option value="TXT">TXT</option>
+            <option value="SOA">SOA</option>
+            <option value="CAA">CAA</option>
+            <option value="SRV">SRV</option>
+            <option value="PTR">PTR</option>
+        </select>
+    </div>
+    <div class="field">
+        <label for="resolver">Resolver</label>
+        <select id="resolver">
+            <option value="cloudflare">Cloudflare</option>
+            <option value="google">Google</option>
+        </select>
+    </div>
+</div>
+
+<div class="buttons">
+    <button class="primary" id="lookupBtn" onclick="runLookup()">Look up</button>
+    <button onclick="shareURL()">Share URL</button>
+    <button onclick="clearAll()">Clear</button>
+</div>
+
+<div id="status" class="status"></div>
+<div id="summary" class="summary"></div>
+<div id="results"></div>
+<div id="rawWrap"></div>
+
+<footer>
+    <a href="index.html">tools.julianwyngaard.dev</a> |
+    <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    <br>
+    DNS resolution by <a href="https://developers.cloudflare.com/1.1.1.1/encryption/dns-over-https/">Cloudflare</a> and <a href="https://developers.google.com/speed/public-dns/docs/doh">Google</a> public DoH APIs. Lookups run client-side from your browser.
+</footer>
+
+<script>
+const STORAGE_KEY = 'dns-lookup-state';
+const ALL_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'TXT', 'SOA', 'CAA', 'SRV'];
+
+const RESOLVERS = {
+    cloudflare: { url: 'https://cloudflare-dns.com/dns-query', label: 'Cloudflare' },
+    google:     { url: 'https://dns.google/resolve',           label: 'Google' }
+};
+
+// Numeric DNS record type -> name (for rendering Answer entries)
+const TYPE_NAMES = {
+    1: 'A', 2: 'NS', 5: 'CNAME', 6: 'SOA', 12: 'PTR', 15: 'MX',
+    16: 'TXT', 28: 'AAAA', 33: 'SRV', 35: 'NAPTR', 43: 'DS',
+    46: 'RRSIG', 48: 'DNSKEY', 257: 'CAA'
+};
+
+// DNS response codes (RCODE)
+const RCODES = {
+    0: 'NOERROR', 1: 'FORMERR', 2: 'SERVFAIL', 3: 'NXDOMAIN',
+    4: 'NOTIMP', 5: 'REFUSED'
+};
+
+const COPY_ICON = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+const CHECK_ICON = '<svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+
+const domainInput = document.getElementById('domain');
+const typeSelect = document.getElementById('type');
+const resolverSelect = document.getElementById('resolver');
+const lookupBtn = document.getElementById('lookupBtn');
+const statusEl = document.getElementById('status');
+const summaryEl = document.getElementById('summary');
+const resultsEl = document.getElementById('results');
+const rawWrap = document.getElementById('rawWrap');
+
+let statusTimer = null;
+
+function showStatus(msg, type) {
+    clearTimeout(statusTimer);
+    statusEl.textContent = msg;
+    statusEl.className = 'status ' + type;
+    if (type === 'success' || type === 'info') {
+        statusTimer = setTimeout(() => {
+            statusEl.textContent = '';
+            statusEl.className = 'status';
+        }, 3000);
+    }
+}
+
+function clearStatus() {
+    clearTimeout(statusTimer);
+    statusEl.textContent = '';
+    statusEl.className = 'status';
+}
+
+// seconds -> human readable TTL
+function formatTTL(secs) {
+    if (secs == null || isNaN(secs)) return '';
+    if (secs < 60) return secs + 's';
+    if (secs < 3600) return Math.round(secs / 60) + 'm';
+    if (secs < 86400) return (secs / 3600).toFixed(secs % 3600 ? 1 : 0) + 'h';
+    return (secs / 86400).toFixed(secs % 86400 ? 1 : 0) + 'd';
+}
+
+function copyToClipboard(text, btn) {
+    navigator.clipboard.writeText(text).then(() => {
+        btn.innerHTML = CHECK_ICON;
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.innerHTML = COPY_ICON;
+            btn.classList.remove('copied');
+        }, 1500);
+    }).catch(() => {
+        showStatus('Copy failed — select the value manually', 'error');
+    });
+}
+
+function makeCopyButton(text) {
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.title = 'Copy value';
+    btn.innerHTML = COPY_ICON;
+    btn.addEventListener('click', () => copyToClipboard(text, btn));
+    return btn;
+}
+
+async function fetchDNS(domain, type, resolverKey) {
+    const resolver = RESOLVERS[resolverKey] || RESOLVERS.cloudflare;
+    const url = new URL(resolver.url);
+    url.searchParams.set('name', domain);
+    url.searchParams.set('type', type);
+    const resp = await fetch(url, { headers: { 'Accept': 'application/dns-json' } });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status + ' from ' + resolver.label);
+    return resp.json();
+}
+
+function normalizeDomain(value) {
+    let d = value.trim();
+    // Allow pasting a full URL; pull out the hostname.
+    if (/^[a-z][a-z0-9+.-]*:\/\//i.test(d)) {
+        try { d = new URL(d).hostname; } catch (e) { /* leave as typed */ }
+    }
+    return d.replace(/^\.+|\.+$/g, '');
+}
+
+function renderGroup(typeName, answers, sectionLabel) {
+    const group = document.createElement('div');
+    group.className = 'record-group';
+
+    const head = document.createElement('div');
+    head.className = 'record-head';
+    const tag = document.createElement('span');
+    tag.className = 'type-tag';
+    tag.textContent = typeName;
+    head.appendChild(tag);
+    const count = document.createElement('span');
+    count.className = 'count';
+    count.textContent = answers.length + (answers.length === 1 ? ' record' : ' records');
+    head.appendChild(count);
+    if (sectionLabel) {
+        const sec = document.createElement('span');
+        sec.className = 'section';
+        sec.textContent = sectionLabel;
+        head.appendChild(sec);
+    }
+    group.appendChild(head);
+
+    answers.forEach(ans => {
+        const row = document.createElement('div');
+        row.className = 'record-row';
+        const data = document.createElement('div');
+        data.className = 'data';
+        data.textContent = ans.data;
+        row.appendChild(data);
+        if (ans.TTL != null) {
+            const ttl = document.createElement('div');
+            ttl.className = 'ttl';
+            ttl.title = ans.TTL + ' seconds';
+            ttl.textContent = 'TTL ' + formatTTL(ans.TTL);
+            row.appendChild(ttl);
+        }
+        row.appendChild(makeCopyButton(ans.data));
+        group.appendChild(row);
+    });
+
+    return group;
+}
+
+function renderSummary(domain, results) {
+    summaryEl.innerHTML = '';
+    const dom = document.createElement('span');
+    dom.className = 'pill muted';
+    dom.textContent = domain;
+    summaryEl.appendChild(dom);
+
+    // Worst status across queries wins the headline.
+    const statuses = results.map(r => r.json && r.json.Status).filter(s => s != null);
+    const headline = statuses.includes(3) ? 3 : (statuses.find(s => s !== 0) ?? 0);
+    const stat = document.createElement('span');
+    stat.className = 'pill ' + (headline === 0 ? 'ok' : 'bad');
+    stat.textContent = RCODES[headline] || ('STATUS ' + headline);
+    summaryEl.appendChild(stat);
+
+    const total = results.reduce((n, r) => n + ((r.json && r.json.Answer) ? r.json.Answer.length : 0), 0);
+    const cnt = document.createElement('span');
+    cnt.className = 'pill';
+    cnt.textContent = total + (total === 1 ? ' answer' : ' answers');
+    summaryEl.appendChild(cnt);
+
+    // DNSSEC authenticated-data flag, if any query reports it.
+    if (results.some(r => r.json && r.json.AD)) {
+        const ad = document.createElement('span');
+        ad.className = 'pill flag';
+        ad.textContent = 'DNSSEC ✓';
+        summaryEl.appendChild(ad);
+    }
+
+    const res = document.createElement('span');
+    res.className = 'pill muted';
+    res.textContent = 'via ' + (RESOLVERS[resolverSelect.value] || {}).label;
+    summaryEl.appendChild(res);
+}
+
+function renderResults(domain, results) {
+    resultsEl.innerHTML = '';
+    rawWrap.innerHTML = '';
+
+    let anyAnswers = false;
+    const comments = [];
+
+    results.forEach(r => {
+        if (!r.json) return;
+        const j = r.json;
+        if (Array.isArray(j.Comment)) comments.push(...j.Comment);
+        else if (typeof j.Comment === 'string') comments.push(j.Comment);
+
+        const answers = j.Answer || [];
+        if (answers.length) {
+            anyAnswers = true;
+            // Group by record type name (handles CNAME chains, ALL sweep, etc.)
+            const byType = {};
+            answers.forEach(a => {
+                const tn = TYPE_NAMES[a.type] || ('TYPE' + a.type);
+                (byType[tn] = byType[tn] || []).push(a);
+            });
+            Object.keys(byType).forEach(tn => {
+                resultsEl.appendChild(renderGroup(tn, byType[tn]));
+            });
+        } else if (results.length === 1) {
+            // Single explicit query with no answers: show authority (e.g. SOA on NXDOMAIN).
+            const auth = j.Authority || [];
+            if (auth.length) {
+                const byType = {};
+                auth.forEach(a => {
+                    const tn = TYPE_NAMES[a.type] || ('TYPE' + a.type);
+                    (byType[tn] = byType[tn] || []).push(a);
+                });
+                Object.keys(byType).forEach(tn => {
+                    resultsEl.appendChild(renderGroup(tn, byType[tn], 'authority'));
+                });
+            }
+        }
+    });
+
+    if (!anyAnswers && !resultsEl.children.length) {
+        const note = document.createElement('div');
+        note.className = 'record-group';
+        const inner = document.createElement('div');
+        inner.className = 'empty-note';
+        inner.textContent = 'No matching records found for this query.';
+        note.appendChild(inner);
+        resultsEl.appendChild(note);
+    }
+
+    if (comments.length) {
+        const note = document.createElement('div');
+        note.className = 'status info';
+        note.style.marginTop = '1rem';
+        note.textContent = 'Resolver: ' + comments.join(' · ');
+        resultsEl.appendChild(note);
+    }
+
+    // Raw JSON (collapsible).
+    const details = document.createElement('details');
+    details.className = 'raw';
+    const summary = document.createElement('summary');
+    summary.textContent = 'Raw JSON response';
+    details.appendChild(summary);
+    const pre = document.createElement('pre');
+    const payload = results.length === 1 ? results[0].json : results.reduce((acc, r) => {
+        acc[r.type] = r.json;
+        return acc;
+    }, {});
+    pre.textContent = JSON.stringify(payload, null, 2);
+    details.appendChild(pre);
+    rawWrap.appendChild(details);
+}
+
+async function runLookup() {
+    const domain = normalizeDomain(domainInput.value);
+    if (!domain) {
+        showStatus('Enter a domain name to look up', 'error');
+        domainInput.focus();
+        return;
+    }
+    domainInput.value = domain;
+    const selectedType = typeSelect.value;
+    const resolverKey = resolverSelect.value;
+    const typesToQuery = selectedType === 'ALL' ? ALL_TYPES : [selectedType];
+
+    saveState();
+    lookupBtn.disabled = true;
+    lookupBtn.textContent = 'Looking up…';
+    showStatus('Querying ' + (RESOLVERS[resolverKey] || {}).label + '…', 'info');
+
+    try {
+        const results = await Promise.all(typesToQuery.map(async t => {
+            try {
+                const json = await fetchDNS(domain, t, resolverKey);
+                return { type: t, json };
+            } catch (e) {
+                return { type: t, json: null, error: e.message };
+            }
+        }));
+
+        const failures = results.filter(r => !r.json);
+        if (failures.length === results.length) {
+            showStatus('Lookup failed: ' + (failures[0].error || 'network error'), 'error');
+            summaryEl.innerHTML = '';
+            resultsEl.innerHTML = '';
+            rawWrap.innerHTML = '';
+            return;
+        }
+
+        renderSummary(domain, results);
+        renderResults(domain, results);
+        clearStatus();
+    } catch (e) {
+        showStatus('Lookup failed: ' + e.message, 'error');
+    } finally {
+        lookupBtn.disabled = false;
+        lookupBtn.textContent = 'Look up';
+    }
+}
+
+function saveState() {
+    const state = {
+        domain: domainInput.value.trim(),
+        type: typeSelect.value,
+        resolver: resolverSelect.value
+    };
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+}
+
+function applyState(state) {
+    if (!state) return;
+    if (state.domain) domainInput.value = state.domain;
+    if (state.type && [...typeSelect.options].some(o => o.value === state.type)) typeSelect.value = state.type;
+    if (state.resolver && RESOLVERS[state.resolver]) resolverSelect.value = state.resolver;
+}
+
+function shareURL() {
+    const domain = normalizeDomain(domainInput.value);
+    if (!domain) {
+        showStatus('Enter a domain before sharing', 'error');
+        return;
+    }
+    const params = new URLSearchParams();
+    params.set('domain', domain);
+    params.set('type', typeSelect.value);
+    params.set('resolver', resolverSelect.value);
+    const url = window.location.origin + window.location.pathname + '?' + params.toString();
+    window.history.replaceState({}, '', '?' + params.toString());
+    navigator.clipboard.writeText(url).then(() => {
+        showStatus('Shareable URL copied to clipboard', 'success');
+    }).catch(() => {
+        showStatus('URL updated — copy it from the address bar', 'info');
+    });
+}
+
+function clearAll() {
+    domainInput.value = '';
+    typeSelect.value = 'ALL';
+    resolverSelect.value = 'cloudflare';
+    summaryEl.innerHTML = '';
+    resultsEl.innerHTML = '';
+    rawWrap.innerHTML = '';
+    clearStatus();
+    try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+    window.history.replaceState({}, '', window.location.pathname);
+    domainInput.focus();
+}
+
+function init() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('domain') || params.has('type') || params.has('resolver')) {
+        applyState({
+            domain: params.get('domain') || '',
+            type: params.get('type') || '',
+            resolver: params.get('resolver') || ''
+        });
+        if (domainInput.value.trim()) {
+            runLookup();
+            return;
+        }
+    } else {
+        try {
+            const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+            applyState(saved);
+            if (saved && saved.domain) {
+                showStatus('Restored your last lookup — press Look up to run it again', 'info');
+            }
+        } catch (e) {}
+    }
+    domainInput.focus();
+}
+
+domainInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); runLookup(); }
+});
+typeSelect.addEventListener('change', saveState);
+resolverSelect.addEventListener('change', saveState);
+
+init();
+</script>
+</body>
+</html>
