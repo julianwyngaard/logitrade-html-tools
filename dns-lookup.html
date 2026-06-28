@@ -266,9 +266,9 @@
         const MAX_HISTORY = 10;
 
         const RESOLVERS = {
-            '1.1.1.1': { endpoint: 'https://cloudflare-dns.com/dns-query', desc: 'Unfiltered' },
-            '1.1.1.2': { endpoint: 'https://security.cloudflare-dns.com/dns-query', desc: 'Malware' },
-            '1.1.1.3': { endpoint: 'https://family.cloudflare-dns.com/dns-query', desc: 'Malware + adult' }
+            '1.1.1.1': { endpoint: 'https://cloudflare-dns.com/dns-query', desc: 'No filtering' },
+            '1.1.1.2': { endpoint: 'https://security.cloudflare-dns.com/dns-query', desc: 'Blocks malware' },
+            '1.1.1.3': { endpoint: 'https://family.cloudflare-dns.com/dns-query', desc: 'Blocks malware + adult' }
         };
 
         const RECORD_TYPES = ['A', 'AAAA', 'CNAME', 'MX', 'NS', 'TXT', 'SOA', 'CAA', 'SRV', 'PTR'];
