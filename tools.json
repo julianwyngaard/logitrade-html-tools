@@ -95,6 +95,14 @@
       "category": "data",
       "created": "2026-03-31",
       "updated": "2026-03-31"
+    },
+    {
+      "slug": "dns-lookup",
+      "name": "DNS Lookup",
+      "description": "Look up DNS records (A, AAAA, MX, TXT, and more) via Cloudflare DNS-over-HTTPS. Shareable via URL.",
+      "category": "networking",
+      "created": "2026-06-28",
+      "updated": "2026-06-28"
     }
   ],
   "categories": {
