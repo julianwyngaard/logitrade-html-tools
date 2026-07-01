@@ -8,7 +8,7 @@ Compare working hours across timezones to find a meeting slot that works for eve
 - Search by city or country (e.g. "Portland", "Tokyo", "India", "New York") against a broad built-in list — your own timezone is added automatically
 - The place keeps the name you searched for, even where several cities share one timezone (Portland stays "Portland", not "Los Angeles")
 - Click any hour to select a meeting time and see it instantly in every timezone; hovering a column previews it everywhere
-- Working hours shaded green; nights shaded grey; the "Overlap" bar highlights hours when everyone is available
+- Hours are shaded like a heat-map: green for working hours, amber for outside-hours-but-still-awake (early morning / evening), grey for night; the "Overlap" bar highlights hours when everyone is within working hours
 - A day chip (e.g. "-1 day") flags places on a different calendar day, and a subtle divider marks each place's local midnight
 - Adjustable global working hours and meeting date (so daylight saving is handled for the actual day)
 - Shareable URLs with the full comparison embedded
