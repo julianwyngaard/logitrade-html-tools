@@ -5,6 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timezone Comparison - tools.julianwyngaard.dev</title>
     <style>
+        :root {
+            --primary: #0066cc;
+            --primary-dark: #0055aa;
+            --ink: #1f2733;
+            --muted: #6b7686;
+            --line: #e6e9ee;
+            --label-w: 190px;
+            --work-bg: #e2f2e6;
+            --work-ink: #2b7a45;
+            --night-bg: #eef1f5;
+            --night-ink: #97a1b0;
+            --good: #2e9e57;
+            --sel-bg: #e1efff;
+        }
         * { box-sizing: border-box; }
         body {
             font-family: system-ui, -apple-system, sans-serif;
@@ -12,14 +26,16 @@
             margin: 0 auto;
             padding: 1rem;
             line-height: 1.6;
-            color: #333;
+            color: var(--ink);
         }
-        h1 { margin-bottom: 0.5rem; }
+        h1 { margin-bottom: 0.25rem; font-size: 1.9rem; letter-spacing: -0.02em; }
+        .lede { color: var(--muted); margin-top: 0; }
         .back-link {
             display: inline-block;
             margin-bottom: 1rem;
-            color: #0066cc;
+            color: var(--primary);
             text-decoration: none;
+            font-size: 0.9rem;
         }
         .back-link:hover { text-decoration: underline; }
 
@@ -27,29 +43,37 @@
             display: flex;
             flex-wrap: wrap;
             align-items: flex-end;
-            gap: 1rem;
+            gap: 1rem 1.25rem;
             margin: 1rem 0;
-            padding: 0.75rem;
-            background: #f9f9f9;
-            border: 1px solid #eee;
-            border-radius: 6px;
+            padding: 0.9rem 1rem;
+            background: #f7f8fa;
+            border: 1px solid var(--line);
+            border-radius: 10px;
         }
-        .field { display: flex; flex-direction: column; gap: 0.25rem; }
+        .field { display: flex; flex-direction: column; gap: 0.3rem; }
         .field label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #555;
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--muted);
         }
         input[type="date"], input[type="text"], select {
-            padding: 0.5rem;
+            padding: 0.5rem 0.6rem;
             font-size: 0.95rem;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            border: 1px solid #ccd2da;
+            border-radius: 7px;
             font-family: inherit;
+            color: var(--ink);
+            background: #fff;
         }
-        input:focus, select:focus { outline: none; border-color: #0066cc; }
-        .work-hours { display: flex; align-items: center; gap: 0.35rem; }
-        .work-hours select { padding: 0.4rem; }
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0,102,204,0.12);
+        }
+        .work-hours { display: flex; align-items: center; gap: 0.4rem; }
+        .work-hours span { color: var(--muted); font-size: 0.85rem; }
 
         .search-wrap { position: relative; flex: 1; min-width: 220px; }
         .search-wrap input { width: 100%; }
@@ -62,169 +86,261 @@
             left: 0;
             right: 0;
             z-index: 10;
+            margin-top: 4px;
             background: #fff;
-            border: 1px solid #ccc;
-            border-top: none;
-            border-radius: 0 0 4px 4px;
-            max-height: 260px;
+            border: 1px solid #ccd2da;
+            border-radius: 8px;
+            max-height: 280px;
             overflow-y: auto;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 24px rgba(20,30,50,0.14);
         }
         .suggestions:empty { display: none; }
         .suggestions li {
-            padding: 0.5rem 0.6rem;
+            padding: 0.5rem 0.7rem;
             cursor: pointer;
             font-size: 0.9rem;
             display: flex;
             justify-content: space-between;
+            align-items: center;
             gap: 0.5rem;
         }
-        .suggestions li:hover, .suggestions li.active { background: #e7f3ff; }
-        .suggestions li .sub { color: #888; font-size: 0.8rem; white-space: nowrap; }
+        .suggestions li + li { border-top: 1px solid #f2f4f7; }
+        .suggestions li:hover, .suggestions li.active { background: #eef6ff; }
+        .suggestions li .sub {
+            color: var(--muted);
+            font-size: 0.72rem;
+            white-space: nowrap;
+            font-variant-numeric: tabular-nums;
+        }
 
-        .buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+        .buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.25rem 0 0.5rem; }
         button {
             padding: 0.5rem 1rem;
-            font-size: 1rem;
+            font-size: 0.95rem;
             cursor: pointer;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: #f5f5f5;
+            border: 1px solid #ccd2da;
+            border-radius: 7px;
+            background: #fff;
+            color: var(--ink);
+            transition: background 0.12s, border-color 0.12s;
         }
-        button:hover { background: #e5e5e5; }
-        button.primary { background: #0066cc; color: white; border-color: #0066cc; }
-        button.primary:hover { background: #0055aa; }
+        button:hover { background: #f0f2f5; }
+        button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+        button.primary:hover { background: var(--primary-dark); }
 
         .selected-banner {
-            margin: 0.5rem 0 1rem;
-            padding: 0.6rem 0.9rem;
-            background: #e7f3ff;
-            border: 1px solid #b8daff;
-            border-radius: 6px;
+            display: flex;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 0.15rem 0.6rem;
+            margin: 0.75rem 0 1rem;
+            padding: 0.7rem 1rem;
+            background: linear-gradient(180deg, #f0f7ff, #e8f2ff);
+            border: 1px solid #cfe3fb;
+            border-radius: 10px;
             font-size: 0.95rem;
-            color: #004085;
+            color: #0a4a8f;
         }
-        .selected-banner strong { font-size: 1.05rem; }
+        .selected-banner .big {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            letter-spacing: -0.01em;
+            font-variant-numeric: tabular-nums;
+        }
+        .selected-banner .where { color: #37618c; }
 
-        .planner-scroll { overflow-x: auto; padding-bottom: 0.5rem; }
+        .planner-scroll {
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            -webkit-overflow-scrolling: touch;
+        }
         .planner-grid {
             display: grid;
-            grid-template-columns: 172px repeat(24, minmax(28px, 1fr));
-            min-width: 844px;
-            border: 1px solid #e5e5e5;
-            border-radius: 6px;
+            grid-template-columns: var(--label-w) repeat(24, minmax(30px, 1fr));
+            min-width: 850px;
+            border: 1px solid var(--line);
+            border-radius: 10px;
             overflow: hidden;
-        }
-        .row-label {
-            padding: 0.5rem 0.6rem;
-            border-right: 2px solid #ddd;
-            border-bottom: 1px solid #eee;
-            background: #fafafa;
-            display: flex;
-            flex-direction: column;
-            gap: 0.1rem;
-            justify-content: center;
-        }
-        .row-label .city { font-weight: 600; font-size: 0.9rem; line-height: 1.2; }
-        .row-label .meta { font-size: 0.75rem; color: #888; }
-        .row-label .now {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: #0066cc;
-            font-variant-numeric: tabular-nums;
-        }
-        .row-label .now .date { font-size: 0.75rem; font-weight: 500; color: #666; margin-left: 0.3rem; }
-        .row-label .remove {
-            align-self: flex-start;
-            margin-top: 0.2rem;
-            padding: 0.05rem 0.4rem;
-            font-size: 0.75rem;
-            line-height: 1.4;
             background: #fff;
-            border: 1px solid #ddd;
-            color: #999;
+            animation: fade 0.25s ease;
         }
-        .row-label .remove:hover { background: #f8d7da; color: #721c24; border-color: #f1b0b7; }
+        @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 
-        .cell {
-            border-bottom: 1px solid #eee;
-            border-right: 1px solid #f0f0f0;
-            text-align: center;
-            font-size: 0.7rem;
-            padding: 0.55rem 0;
-            cursor: pointer;
-            color: #555;
-            font-variant-numeric: tabular-nums;
-            user-select: none;
-        }
-        .cell.day { background: #ffffff; }
-        .cell.work { background: #d7f0dd; color: #1b5e2a; }
-        .cell.night { background: #dfe3ea; color: #7a8290; }
-        .cell.sel { box-shadow: inset 0 0 0 2px #0066cc; font-weight: 700; color: #0066cc; }
-        .cell:hover { filter: brightness(0.95); }
-
-        .overlap-label {
-            padding: 0.4rem 0.6rem;
-            border-right: 2px solid #ddd;
-            border-bottom: 1px solid #eee;
-            background: #fafafa;
-            font-size: 0.72rem;
-            font-weight: 600;
-            color: #777;
+        .corner {
+            border-right: 2px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            background: #fbfcfd;
             display: flex;
             align-items: center;
+            padding: 0 0.7rem;
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--muted);
         }
         .overlap-cell {
-            border-bottom: 1px solid #eee;
-            border-right: 1px solid #f0f0f0;
+            border-bottom: 1px solid var(--line);
+            border-right: 1px solid #f3f5f7;
             cursor: pointer;
-            height: 12px;
+            height: 16px;
         }
-        .overlap-cell.good { background: #34a853; }
-        .overlap-cell.sel { box-shadow: inset 0 0 0 2px #0066cc; }
+        .overlap-cell.good { background: var(--good); }
+        .overlap-cell.sel { box-shadow: inset 1px 0 0 var(--primary), inset -1px 0 0 var(--primary); }
+        .overlap-cell.daybreak { border-left: 1px solid #d8dde4; }
+
+        .row-label {
+            position: relative;
+            padding: 0.55rem 0.7rem;
+            border-right: 2px solid var(--line);
+            border-bottom: 1px solid var(--line);
+            background: #fbfcfd;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 0.05rem;
+        }
+        .planner-grid > .row-label:last-of-type,
+        .planner-grid > .cell:last-child { border-bottom: none; }
+        .row-label .city {
+            font-weight: 650;
+            font-size: 0.92rem;
+            line-height: 1.25;
+            padding-right: 1.1rem;
+        }
+        .row-label .now {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--ink);
+            line-height: 1.15;
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -0.01em;
+        }
+        .row-label .daterow {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            font-size: 0.75rem;
+            color: var(--muted);
+        }
+        .row-label .offset {
+            display: inline-block;
+            padding: 0.05rem 0.4rem;
+            border-radius: 999px;
+            background: #eef1f5;
+            color: #5a6474;
+            font-size: 0.68rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            margin-top: 0.15rem;
+            width: fit-content;
+        }
+        .row-label .daychip {
+            padding: 0.02rem 0.35rem;
+            border-radius: 999px;
+            font-size: 0.66rem;
+            font-weight: 700;
+            background: #fff2e0;
+            color: #b25e00;
+        }
+        .row-label .remove {
+            position: absolute;
+            top: 0.35rem;
+            right: 0.4rem;
+            width: 20px;
+            height: 20px;
+            padding: 0;
+            border-radius: 5px;
+            border: none;
+            background: transparent;
+            color: #b6bdc7;
+            font-size: 0.95rem;
+            line-height: 1;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.12s, background 0.12s, color 0.12s;
+        }
+        .row-label:hover .remove { opacity: 1; }
+        .row-label .remove:hover { background: #fdecee; color: #c0392b; }
+
+        .cell {
+            border-bottom: 1px solid var(--line);
+            border-right: 1px solid #f3f5f7;
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 0.6rem 0;
+            cursor: pointer;
+            color: #7a828f;
+            font-variant-numeric: tabular-nums;
+            user-select: none;
+            transition: background 0.1s;
+        }
+        .cell.day { background: #fff; }
+        .cell.work { background: var(--work-bg); color: var(--work-ink); font-weight: 600; }
+        .cell.night { background: var(--night-bg); color: var(--night-ink); }
+        .cell.daybreak { border-left: 1px solid #d8dde4; }
+        .cell.hover:not(.sel) { background: rgba(0,102,204,0.07); }
+        .cell.sel {
+            background: var(--sel-bg);
+            color: var(--primary);
+            font-weight: 700;
+            box-shadow: inset 1px 0 0 var(--primary), inset -1px 0 0 var(--primary);
+        }
 
         .legend {
             display: flex;
             flex-wrap: wrap;
-            gap: 1rem;
-            margin: 0.75rem 0;
+            gap: 0.5rem 1.1rem;
+            margin: 0.85rem 0;
             font-size: 0.8rem;
-            color: #666;
+            color: var(--muted);
         }
-        .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
-        .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1); }
-        .swatch.work { background: #d7f0dd; }
-        .swatch.night { background: #dfe3ea; }
-        .swatch.good { background: #34a853; }
-        .swatch.sel { box-shadow: inset 0 0 0 2px #0066cc; }
+        .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
+        .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.08); }
+        .swatch.work { background: var(--work-bg); }
+        .swatch.night { background: var(--night-bg); }
+        .swatch.good { background: var(--good); border-color: var(--good); }
+        .swatch.sel { background: var(--sel-bg); box-shadow: inset 0 0 0 1.5px var(--primary); }
 
-        .empty-hint { color: #999; font-style: italic; padding: 1rem 0; }
+        .empty-hint {
+            color: var(--muted);
+            padding: 1.5rem 1rem;
+            text-align: center;
+            border: 1px dashed #d3d8df;
+            border-radius: 10px;
+            background: #fbfcfd;
+        }
 
-        .status { margin-top: 0.5rem; padding: 0.5rem; border-radius: 4px; font-size: 0.9rem; }
-        .status.success { background: #d4edda; color: #155724; }
-        .status.error { background: #f8d7da; color: #721c24; }
-        .status.info { background: #e7f3ff; color: #004085; }
+        .status { margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 7px; font-size: 0.9rem; }
+        .status.success { background: #e5f6ea; color: #1f7a3d; }
+        .status.error { background: #fdecec; color: #c0392b; }
+        .status.info { background: #eaf3ff; color: #0a4a8f; }
         .status:empty { display: none; }
 
         footer {
-            margin-top: 2rem;
+            margin-top: 2.25rem;
             padding-top: 1rem;
-            border-top: 1px solid #eee;
-            color: #666;
-            font-size: 0.9rem;
+            border-top: 1px solid var(--line);
+            color: var(--muted);
+            font-size: 0.88rem;
         }
-        footer a { color: #0066cc; }
+        footer a { color: var(--primary); }
 
         @media (max-width: 600px) {
+            :root { --label-w: 148px; }
+            h1 { font-size: 1.55rem; }
             .controls { flex-direction: column; align-items: stretch; }
             .search-wrap { min-width: 0; }
+            .planner-grid { min-width: 720px; }
+            .row-label .now { font-size: 1.15rem; }
         }
     </style>
 </head>
 <body>
     <a href="index.html" class="back-link">&larr; All Tools</a>
     <h1>Timezone Comparison</h1>
-    <p>Compare working hours across timezones to find a meeting slot. Click any hour to see it everywhere at once.</p>
+    <p class="lede">Line up working hours across places to find a meeting slot. Click any hour to see that moment everywhere at once.</p>
 
     <div class="controls">
         <div class="field">
@@ -241,7 +357,7 @@
         </div>
         <div class="field search-wrap">
             <label for="zone-search">Add a place</label>
-            <input type="text" id="zone-search" placeholder="Search city or country, e.g. Tokyo, India&hellip;" autocomplete="off">
+            <input type="text" id="zone-search" placeholder="Search city or country, e.g. Portland, Tokyo, India&hellip;" autocomplete="off">
             <ul class="suggestions" id="suggestions"></ul>
         </div>
     </div>
@@ -320,61 +436,98 @@
         function pad2(n) { return String(n).padStart(2, '0'); }
         function fmtTime(parts) { return pad2(parts.hour) + ':' + pad2(parts.minute); }
         function fmtDate(parts) { return parts.weekday + ' ' + parts.day + ' ' + MONTHS[parts.month - 1]; }
+        function dayNumber(parts) { return Date.UTC(parts.year, parts.month - 1, parts.day) / 86400000; }
 
-        function cityLabel(zone) {
+        function primaryLabel(zone) {
             const found = CITIES.find(c => c.zone === zone);
             if (found) return found.label;
             return zone.split('/').pop().replace(/_/g, ' ');
         }
 
+        function cityLabel(zone) {
+            return state.labels[zone] || primaryLabel(zone);
+        }
+
         // ---- Curated place list (label + search keywords -> IANA zone) ----
+        // IANA identifiers only name a handful of representative cities, so the
+        // list below lets people search by the city or country they actually know.
+        // The first entry for each zone is the display default for shared links.
 
         const CITIES = [
             { label: 'Honolulu, USA', zone: 'Pacific/Honolulu', kw: 'hawaii united states america' },
             { label: 'Anchorage, USA', zone: 'America/Anchorage', kw: 'alaska united states america' },
-            { label: 'Los Angeles, USA', zone: 'America/Los_Angeles', kw: 'la san francisco seattle usa united states america pacific west coast california' },
-            { label: 'Vancouver, Canada', zone: 'America/Vancouver', kw: 'canada' },
+            { label: 'Los Angeles, USA', zone: 'America/Los_Angeles', kw: 'usa united states america pacific west coast california' },
+            { label: 'San Francisco, USA', zone: 'America/Los_Angeles', kw: 'usa california bay area silicon valley' },
+            { label: 'Seattle, USA', zone: 'America/Los_Angeles', kw: 'usa washington state pacific' },
+            { label: 'Portland, USA', zone: 'America/Los_Angeles', kw: 'usa oregon pacific' },
+            { label: 'San Diego, USA', zone: 'America/Los_Angeles', kw: 'usa california' },
+            { label: 'Las Vegas, USA', zone: 'America/Los_Angeles', kw: 'usa nevada' },
+            { label: 'Sacramento, USA', zone: 'America/Los_Angeles', kw: 'usa california' },
+            { label: 'Vancouver, Canada', zone: 'America/Vancouver', kw: 'canada british columbia' },
             { label: 'Denver, USA', zone: 'America/Denver', kw: 'usa united states america mountain colorado' },
-            { label: 'Phoenix, USA', zone: 'America/Phoenix', kw: 'arizona usa united states america' },
-            { label: 'Chicago, USA', zone: 'America/Chicago', kw: 'usa united states america central texas dallas houston' },
+            { label: 'Salt Lake City, USA', zone: 'America/Denver', kw: 'usa utah mountain' },
+            { label: 'Albuquerque, USA', zone: 'America/Denver', kw: 'usa new mexico' },
+            { label: 'Boise, USA', zone: 'America/Boise', kw: 'usa idaho mountain' },
+            { label: 'Calgary, Canada', zone: 'America/Edmonton', kw: 'canada edmonton alberta mountain' },
+            { label: 'Phoenix, USA', zone: 'America/Phoenix', kw: 'arizona usa united states america tucson' },
+            { label: 'Chicago, USA', zone: 'America/Chicago', kw: 'usa united states america central illinois' },
+            { label: 'Houston, USA', zone: 'America/Chicago', kw: 'usa texas central' },
+            { label: 'Dallas, USA', zone: 'America/Chicago', kw: 'usa texas central fort worth' },
+            { label: 'Austin, USA', zone: 'America/Chicago', kw: 'usa texas central' },
+            { label: 'San Antonio, USA', zone: 'America/Chicago', kw: 'usa texas central' },
+            { label: 'Minneapolis, USA', zone: 'America/Chicago', kw: 'usa minnesota central saint paul' },
+            { label: 'Nashville, USA', zone: 'America/Chicago', kw: 'usa tennessee central' },
+            { label: 'New Orleans, USA', zone: 'America/Chicago', kw: 'usa louisiana central' },
+            { label: 'Kansas City, USA', zone: 'America/Chicago', kw: 'usa missouri central' },
             { label: 'Mexico City, Mexico', zone: 'America/Mexico_City', kw: 'mexico' },
-            { label: 'New York, USA', zone: 'America/New_York', kw: 'nyc usa united states america eastern boston washington east coast' },
-            { label: 'Toronto, Canada', zone: 'America/Toronto', kw: 'canada ottawa' },
+            { label: 'Winnipeg, Canada', zone: 'America/Winnipeg', kw: 'canada manitoba central' },
+            { label: 'New York, USA', zone: 'America/New_York', kw: 'nyc usa united states america eastern east coast' },
+            { label: 'Boston, USA', zone: 'America/New_York', kw: 'usa massachusetts eastern' },
+            { label: 'Washington, USA', zone: 'America/New_York', kw: 'usa dc district columbia eastern capital' },
+            { label: 'Philadelphia, USA', zone: 'America/New_York', kw: 'usa pennsylvania eastern' },
+            { label: 'Atlanta, USA', zone: 'America/New_York', kw: 'usa georgia eastern' },
+            { label: 'Miami, USA', zone: 'America/New_York', kw: 'usa florida eastern orlando tampa' },
+            { label: 'Detroit, USA', zone: 'America/Detroit', kw: 'usa michigan eastern' },
+            { label: 'Toronto, Canada', zone: 'America/Toronto', kw: 'canada ontario ottawa eastern' },
+            { label: 'Montreal, Canada', zone: 'America/Toronto', kw: 'canada quebec eastern' },
             { label: 'Bogota, Colombia', zone: 'America/Bogota', kw: 'colombia' },
             { label: 'Lima, Peru', zone: 'America/Lima', kw: 'peru' },
             { label: 'Santiago, Chile', zone: 'America/Santiago', kw: 'chile' },
             { label: 'Caracas, Venezuela', zone: 'America/Caracas', kw: 'venezuela' },
-            { label: 'Halifax, Canada', zone: 'America/Halifax', kw: 'canada atlantic' },
+            { label: 'Halifax, Canada', zone: 'America/Halifax', kw: 'canada atlantic nova scotia' },
             { label: 'Sao Paulo, Brazil', zone: 'America/Sao_Paulo', kw: 'brazil rio de janeiro brasil' },
             { label: 'Buenos Aires, Argentina', zone: 'America/Argentina/Buenos_Aires', kw: 'argentina' },
             { label: 'Montevideo, Uruguay', zone: 'America/Montevideo', kw: 'uruguay' },
             { label: 'Azores, Portugal', zone: 'Atlantic/Azores', kw: 'portugal' },
             { label: 'Reykjavik, Iceland', zone: 'Atlantic/Reykjavik', kw: 'iceland' },
             { label: 'London, UK', zone: 'Europe/London', kw: 'united kingdom england britain gb uk gmt' },
+            { label: 'Manchester, UK', zone: 'Europe/London', kw: 'united kingdom england britain uk' },
+            { label: 'Edinburgh, UK', zone: 'Europe/London', kw: 'united kingdom scotland britain uk glasgow' },
             { label: 'Dublin, Ireland', zone: 'Europe/Dublin', kw: 'ireland' },
             { label: 'Lisbon, Portugal', zone: 'Europe/Lisbon', kw: 'portugal' },
             { label: 'Accra, Ghana', zone: 'Africa/Accra', kw: 'ghana' },
-            { label: 'Paris, France', zone: 'Europe/Paris', kw: 'france' },
-            { label: 'Berlin, Germany', zone: 'Europe/Berlin', kw: 'germany munich frankfurt' },
-            { label: 'Madrid, Spain', zone: 'Europe/Madrid', kw: 'spain barcelona' },
-            { label: 'Rome, Italy', zone: 'Europe/Rome', kw: 'italy milan' },
-            { label: 'Amsterdam, Netherlands', zone: 'Europe/Amsterdam', kw: 'netherlands holland' },
+            { label: 'Paris, France', zone: 'Europe/Paris', kw: 'france lyon marseille' },
+            { label: 'Berlin, Germany', zone: 'Europe/Berlin', kw: 'germany munich frankfurt hamburg cologne' },
+            { label: 'Madrid, Spain', zone: 'Europe/Madrid', kw: 'spain barcelona valencia' },
+            { label: 'Rome, Italy', zone: 'Europe/Rome', kw: 'italy milan naples turin' },
+            { label: 'Amsterdam, Netherlands', zone: 'Europe/Amsterdam', kw: 'netherlands holland rotterdam' },
             { label: 'Brussels, Belgium', zone: 'Europe/Brussels', kw: 'belgium' },
-            { label: 'Zurich, Switzerland', zone: 'Europe/Zurich', kw: 'switzerland geneva' },
+            { label: 'Zurich, Switzerland', zone: 'Europe/Zurich', kw: 'switzerland geneva bern' },
             { label: 'Stockholm, Sweden', zone: 'Europe/Stockholm', kw: 'sweden' },
             { label: 'Oslo, Norway', zone: 'Europe/Oslo', kw: 'norway' },
+            { label: 'Copenhagen, Denmark', zone: 'Europe/Copenhagen', kw: 'denmark' },
             { label: 'Vienna, Austria', zone: 'Europe/Vienna', kw: 'austria' },
             { label: 'Warsaw, Poland', zone: 'Europe/Warsaw', kw: 'poland' },
             { label: 'Lagos, Nigeria', zone: 'Africa/Lagos', kw: 'nigeria' },
             { label: 'Cairo, Egypt', zone: 'Africa/Cairo', kw: 'egypt' },
-            { label: 'Johannesburg, South Africa', zone: 'Africa/Johannesburg', kw: 'south africa cape town' },
+            { label: 'Johannesburg, South Africa', zone: 'Africa/Johannesburg', kw: 'south africa cape town durban pretoria' },
             { label: 'Athens, Greece', zone: 'Europe/Athens', kw: 'greece' },
             { label: 'Helsinki, Finland', zone: 'Europe/Helsinki', kw: 'finland' },
             { label: 'Bucharest, Romania', zone: 'Europe/Bucharest', kw: 'romania' },
             { label: 'Kyiv, Ukraine', zone: 'Europe/Kyiv', kw: 'ukraine kiev' },
             { label: 'Jerusalem, Israel', zone: 'Asia/Jerusalem', kw: 'israel tel aviv' },
             { label: 'Moscow, Russia', zone: 'Europe/Moscow', kw: 'russia' },
-            { label: 'Istanbul, Turkey', zone: 'Europe/Istanbul', kw: 'turkey' },
+            { label: 'Istanbul, Turkey', zone: 'Europe/Istanbul', kw: 'turkey ankara' },
             { label: 'Riyadh, Saudi Arabia', zone: 'Asia/Riyadh', kw: 'saudi arabia' },
             { label: 'Nairobi, Kenya', zone: 'Africa/Nairobi', kw: 'kenya' },
             { label: 'Tehran, Iran', zone: 'Asia/Tehran', kw: 'iran' },
@@ -383,7 +536,7 @@
             { label: 'Kabul, Afghanistan', zone: 'Asia/Kabul', kw: 'afghanistan' },
             { label: 'Karachi, Pakistan', zone: 'Asia/Karachi', kw: 'pakistan islamabad lahore' },
             { label: 'Tashkent, Uzbekistan', zone: 'Asia/Tashkent', kw: 'uzbekistan' },
-            { label: 'Mumbai, India', zone: 'Asia/Kolkata', kw: 'india delhi bangalore bengaluru kolkata chennai hyderabad new delhi' },
+            { label: 'Mumbai, India', zone: 'Asia/Kolkata', kw: 'india delhi new delhi bangalore bengaluru kolkata chennai hyderabad pune' },
             { label: 'Colombo, Sri Lanka', zone: 'Asia/Colombo', kw: 'sri lanka' },
             { label: 'Kathmandu, Nepal', zone: 'Asia/Kathmandu', kw: 'nepal' },
             { label: 'Dhaka, Bangladesh', zone: 'Asia/Dhaka', kw: 'bangladesh' },
@@ -391,15 +544,15 @@
             { label: 'Yangon, Myanmar', zone: 'Asia/Yangon', kw: 'myanmar burma' },
             { label: 'Bangkok, Thailand', zone: 'Asia/Bangkok', kw: 'thailand' },
             { label: 'Jakarta, Indonesia', zone: 'Asia/Jakarta', kw: 'indonesia' },
-            { label: 'Hanoi, Vietnam', zone: 'Asia/Ho_Chi_Minh', kw: 'vietnam saigon ho chi minh' },
+            { label: 'Ho Chi Minh City, Vietnam', zone: 'Asia/Ho_Chi_Minh', kw: 'vietnam saigon hanoi' },
             { label: 'Singapore', zone: 'Asia/Singapore', kw: 'singapore' },
             { label: 'Hong Kong', zone: 'Asia/Hong_Kong', kw: 'hong kong china' },
             { label: 'Beijing, China', zone: 'Asia/Shanghai', kw: 'china shanghai shenzhen guangzhou' },
             { label: 'Kuala Lumpur, Malaysia', zone: 'Asia/Kuala_Lumpur', kw: 'malaysia' },
             { label: 'Manila, Philippines', zone: 'Asia/Manila', kw: 'philippines' },
             { label: 'Taipei, Taiwan', zone: 'Asia/Taipei', kw: 'taiwan' },
-            { label: 'Perth, Australia', zone: 'Australia/Perth', kw: 'australia' },
-            { label: 'Tokyo, Japan', zone: 'Asia/Tokyo', kw: 'japan osaka' },
+            { label: 'Perth, Australia', zone: 'Australia/Perth', kw: 'australia western' },
+            { label: 'Tokyo, Japan', zone: 'Asia/Tokyo', kw: 'japan osaka kyoto' },
             { label: 'Seoul, South Korea', zone: 'Asia/Seoul', kw: 'south korea' },
             { label: 'Adelaide, Australia', zone: 'Australia/Adelaide', kw: 'australia' },
             { label: 'Darwin, Australia', zone: 'Australia/Darwin', kw: 'australia' },
@@ -427,6 +580,7 @@
 
         const state = {
             zones: [],
+            labels: {},
             date: todayLocalDate(),
             selHour: 9,
             workStart: 9,
@@ -452,14 +606,29 @@
             return 'day';
         }
 
+        let hoverCol = -1;
+
+        function highlightColumn(col) {
+            const grid = document.querySelector('.planner-grid');
+            if (!grid) return;
+            if (hoverCol >= 0) {
+                grid.querySelectorAll('.cell[data-col="' + hoverCol + '"]').forEach(c => c.classList.remove('hover'));
+            }
+            hoverCol = col;
+            if (col >= 0) {
+                grid.querySelectorAll('.cell[data-col="' + col + '"]').forEach(c => c.classList.add('hover'));
+            }
+        }
+
         function render() {
             const planner = document.getElementById('planner');
             planner.innerHTML = '';
+            hoverCol = -1;
 
             if (state.zones.length === 0) {
                 const hint = document.createElement('div');
                 hint.className = 'empty-hint';
-                hint.textContent = 'No places yet. Search above to add a city or country.';
+                hint.textContent = 'No places yet — search above to add a city or country.';
                 planner.appendChild(hint);
                 renderBanner();
                 return;
@@ -467,20 +636,21 @@
 
             const start = axisStart();
             const selInstant = instantForColumn(state.selHour);
+            const anchorDay = dayNumber(localPartsAt(selInstant, homeZone()));
 
-            // Precompute the local hour of each zone at each column for shading + overlap.
             const grid = document.createElement('div');
             grid.className = 'planner-grid';
 
-            // Overlap summary row: a column is "good" when every zone is within working hours.
-            const overlapLabel = document.createElement('div');
-            overlapLabel.className = 'overlap-label';
-            overlapLabel.textContent = 'Overlap';
-            grid.appendChild(overlapLabel);
-
+            // Local hour of each zone at each column, reused for shading + overlap.
             const zoneHours = state.zones.map(z =>
                 Array.from({ length: HOURS }, (_, col) =>
                     localPartsAt(new Date(start + col * 3600 * 1000), z).hour));
+
+            // Overlap summary row: a column is "good" when every zone is within working hours.
+            const corner = document.createElement('div');
+            corner.className = 'corner';
+            corner.textContent = 'Overlap';
+            grid.appendChild(corner);
 
             for (let col = 0; col < HOURS; col++) {
                 const cell = document.createElement('div');
@@ -488,13 +658,13 @@
                 const allWork = zoneHours.every(hours =>
                     hours[col] >= state.workStart && hours[col] < state.workEnd);
                 if (allWork) cell.classList.add('good');
+                if (zoneHours[0][col] === 0) cell.classList.add('daybreak');
                 if (col === state.selHour) cell.classList.add('sel');
                 cell.dataset.col = col;
                 cell.title = allWork ? 'Everyone is within working hours' : '';
                 grid.appendChild(cell);
             }
 
-            // One row per zone.
             state.zones.forEach((zone, zi) => {
                 const label = document.createElement('div');
                 label.className = 'row-label';
@@ -507,17 +677,32 @@
                 const nowParts = localPartsAt(selInstant, zone);
                 const now = document.createElement('div');
                 now.className = 'now';
-                now.innerHTML = fmtTime(nowParts) + '<span class="date">' + fmtDate(nowParts) + '</span>';
+                now.textContent = fmtTime(nowParts);
                 label.appendChild(now);
 
-                const meta = document.createElement('div');
-                meta.className = 'meta';
-                meta.textContent = fmtOffset(getOffsetMinutes(selInstant, zone));
-                label.appendChild(meta);
+                const daterow = document.createElement('div');
+                daterow.className = 'daterow';
+                const dateText = document.createElement('span');
+                dateText.textContent = fmtDate(nowParts);
+                daterow.appendChild(dateText);
+                const delta = dayNumber(nowParts) - anchorDay;
+                if (delta !== 0) {
+                    const chip = document.createElement('span');
+                    chip.className = 'daychip';
+                    chip.textContent = (delta > 0 ? '+' : '−') + Math.abs(delta) + ' day' + (Math.abs(delta) > 1 ? 's' : '');
+                    daterow.appendChild(chip);
+                }
+                label.appendChild(daterow);
+
+                const offset = document.createElement('div');
+                offset.className = 'offset';
+                offset.textContent = fmtOffset(getOffsetMinutes(selInstant, zone));
+                label.appendChild(offset);
 
                 const remove = document.createElement('button');
                 remove.className = 'remove';
-                remove.textContent = '✕ remove';
+                remove.title = 'Remove ' + cityLabel(zone);
+                remove.textContent = '×';
                 remove.addEventListener('click', () => removeZone(zi));
                 label.appendChild(remove);
 
@@ -527,6 +712,7 @@
                     const hour = zoneHours[zi][col];
                     const cell = document.createElement('div');
                     cell.className = 'cell ' + hourClass(hour);
+                    if (hour === 0) cell.classList.add('daybreak');
                     if (col === state.selHour) cell.classList.add('sel');
                     cell.textContent = hour;
                     cell.dataset.col = col;
@@ -546,6 +732,11 @@
                 persist();
                 render();
             });
+            grid.addEventListener('mouseover', e => {
+                const target = e.target.closest('[data-col]');
+                highlightColumn(target ? Number(target.dataset.col) : -1);
+            });
+            grid.addEventListener('mouseleave', () => highlightColumn(-1));
 
             renderBanner();
         }
@@ -556,24 +747,34 @@
             const selInstant = instantForColumn(state.selHour);
             const home = homeZone();
             const p = localPartsAt(selInstant, home);
-            banner.innerHTML = 'Selected meeting time: <strong>' + fmtTime(p) + '</strong> ' +
-                fmtDate(p) + ' in ' + cityLabel(home) + ' (' + fmtOffset(getOffsetMinutes(selInstant, home)) + ')';
+            banner.innerHTML = 'Meeting at <span class="big">' + fmtTime(p) + '</span> ' +
+                '<span class="where">' + fmtDate(p) + ' in ' + escapeHTML(cityLabel(home)) +
+                ' (' + fmtOffset(getOffsetMinutes(selInstant, home)) + ')</span>';
+        }
+
+        function escapeHTML(s) {
+            const div = document.createElement('div');
+            div.textContent = s;
+            return div.innerHTML;
         }
 
         // ---- Zone management ----
 
-        function addZone(zone) {
+        function addZone(zone, label) {
             if (state.zones.includes(zone)) {
-                showStatus(cityLabel(zone) + ' is already in the list', 'info');
+                showStatus(cityLabel(zone) + ' shares this timezone and is already on the list', 'info');
                 return;
             }
             state.zones.push(zone);
+            if (label) state.labels[zone] = label;
             persist();
             render();
         }
 
         function removeZone(index) {
+            const zone = state.zones[index];
             state.zones.splice(index, 1);
+            delete state.labels[zone];
             persist();
             render();
         }
@@ -588,11 +789,11 @@
             for (const c of CITIES) {
                 if ((c.label + ' ' + c.kw).toLowerCase().includes(q)) {
                     results.push({ label: c.label, zone: c.zone });
-                    seen.add(c.zone);
                 }
                 if (results.length >= 8) break;
             }
             if (results.length < 8 && typeof Intl.supportedValuesOf === 'function') {
+                results.forEach(r => seen.add(r.zone));
                 for (const z of Intl.supportedValuesOf('timeZone')) {
                     if (seen.has(z)) continue;
                     if (z.toLowerCase().replace(/_/g, ' ').includes(q)) {
@@ -612,7 +813,7 @@
             const results = searchZones(query);
             list.innerHTML = '';
             activeSuggestion = -1;
-            results.forEach((r, i) => {
+            results.forEach(r => {
                 const li = document.createElement('li');
                 const name = document.createElement('span');
                 name.textContent = r.label;
@@ -623,20 +824,20 @@
                 li.appendChild(sub);
                 li.addEventListener('mousedown', e => {
                     e.preventDefault();
-                    pickSuggestion(r.zone);
+                    pickSuggestion(r.zone, r.label);
                 });
                 list.appendChild(li);
             });
         }
 
-        function pickSuggestion(zone) {
-            addZone(zone);
+        function pickSuggestion(zone, label) {
+            addZone(zone, label);
             const input = document.getElementById('zone-search');
             input.value = '';
             document.getElementById('suggestions').innerHTML = '';
         }
 
-        // ---- Persistence (URL + localStorage) ----
+        // ---- Persistence (URL for sharing + localStorage for your session) ----
 
         function persist() {
             const params = new URLSearchParams();
@@ -644,23 +845,18 @@
             params.set('date', state.date);
             params.set('t', state.selHour);
             params.set('w', state.workStart + '-' + state.workEnd);
-            const query = '?' + params.toString();
-            window.history.replaceState({}, '', query);
-            localStorage.setItem(STORAGE_KEY, query);
+            window.history.replaceState({}, '', '?' + params.toString());
+            localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                zones: state.zones,
+                labels: state.labels,
+                date: state.date,
+                selHour: state.selHour,
+                workStart: state.workStart,
+                workEnd: state.workEnd,
+            }));
         }
 
-        function applyQuery(query) {
-            const params = new URLSearchParams(query);
-            const zones = params.get('zones');
-            if (zones !== null) {
-                state.zones = zones.split(',').filter(z => z && isValidZone(z));
-            }
-            if (params.get('date')) state.date = params.get('date');
-            if (params.get('t') !== null) {
-                const t = parseInt(params.get('t'), 10);
-                if (t >= 0 && t < HOURS) state.selHour = t;
-            }
-            const w = params.get('w');
+        function applyWorkWindow(w) {
             if (w && /^\d{1,2}-\d{1,2}$/.test(w)) {
                 const [s, e] = w.split('-').map(Number);
                 if (s >= 0 && s <= 24 && e >= 0 && e <= 24 && s < e) {
@@ -668,7 +864,30 @@
                     state.workEnd = e;
                 }
             }
-            return zones !== null;
+        }
+
+        function applyQuery(query) {
+            const params = new URLSearchParams(query);
+            const zones = params.get('zones');
+            if (zones === null) return false;
+            state.zones = zones.split(',').filter(z => z && isValidZone(z));
+            if (params.get('date')) state.date = params.get('date');
+            const t = parseInt(params.get('t'), 10);
+            if (t >= 0 && t < HOURS) state.selHour = t;
+            applyWorkWindow(params.get('w'));
+            return true;
+        }
+
+        function applyStored(raw) {
+            let data;
+            try { data = JSON.parse(raw); } catch (e) { return false; }
+            if (!data || !Array.isArray(data.zones)) return false;
+            state.zones = data.zones.filter(isValidZone);
+            state.labels = data.labels && typeof data.labels === 'object' ? data.labels : {};
+            if (data.date) state.date = data.date;
+            if (data.selHour >= 0 && data.selHour < HOURS) state.selHour = data.selHour;
+            applyWorkWindow(data.workStart + '-' + data.workEnd);
+            return true;
         }
 
         function isValidZone(zone) {
@@ -681,16 +900,26 @@
         }
 
         function loadState() {
-            let loaded = false;
-            if (window.location.search.length > 1) {
-                loaded = applyQuery(window.location.search);
+            const stored = localStorage.getItem(STORAGE_KEY);
+            const fromUrl = window.location.search.length > 1 && applyQuery(window.location.search);
+
+            if (fromUrl) {
+                // Keep any custom names the user picked in a previous session.
+                if (stored) {
+                    try {
+                        const data = JSON.parse(stored);
+                        if (data && data.labels) {
+                            state.zones.forEach(z => {
+                                if (data.labels[z]) state.labels[z] = data.labels[z];
+                            });
+                        }
+                    } catch (e) { /* ignore malformed cache */ }
+                }
+            } else if (stored) {
+                applyStored(stored);
             }
-            if (!loaded) {
-                const stored = localStorage.getItem(STORAGE_KEY);
-                if (stored) loaded = applyQuery(stored);
-            }
+
             if (state.zones.length === 0) {
-                // Sensible starter set: the user's own zone plus two common hubs.
                 const defaults = [localZone(), 'America/New_York', 'Europe/London'];
                 state.zones = defaults.filter((z, i) => defaults.indexOf(z) === i);
             }
@@ -730,6 +959,7 @@
         function resetTool() {
             localStorage.removeItem(STORAGE_KEY);
             state.zones = [localZone()];
+            state.labels = {};
             state.date = todayLocalDate();
             state.workStart = 9;
             state.workEnd = 17;
@@ -784,7 +1014,7 @@
                 } else if (e.key === 'Enter') {
                     const results = searchZones(e.target.value);
                     const pick = results[activeSuggestion >= 0 ? activeSuggestion : 0];
-                    if (pick) pickSuggestion(pick.zone);
+                    if (pick) pickSuggestion(pick.zone, pick.label);
                     return;
                 } else if (e.key === 'Escape') {
                     list.innerHTML = '';
