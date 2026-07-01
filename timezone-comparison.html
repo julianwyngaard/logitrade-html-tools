@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timezone Comparison - tools.julianwyngaard.dev</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+            line-height: 1.6;
+            color: #333;
+        }
+        h1 { margin-bottom: 0.5rem; }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #0066cc;
+            text-decoration: none;
+        }
+        .back-link:hover { text-decoration: underline; }
+
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 0.75rem;
+            background: #f9f9f9;
+            border: 1px solid #eee;
+            border-radius: 6px;
+        }
+        .field { display: flex; flex-direction: column; gap: 0.25rem; }
+        .field label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="date"], input[type="text"], select {
+            padding: 0.5rem;
+            font-size: 0.95rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        input:focus, select:focus { outline: none; border-color: #0066cc; }
+        .work-hours { display: flex; align-items: center; gap: 0.35rem; }
+        .work-hours select { padding: 0.4rem; }
+
+        .search-wrap { position: relative; flex: 1; min-width: 220px; }
+        .search-wrap input { width: 100%; }
+        .suggestions {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            z-index: 10;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 4px 4px;
+            max-height: 260px;
+            overflow-y: auto;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .suggestions:empty { display: none; }
+        .suggestions li {
+            padding: 0.5rem 0.6rem;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            gap: 0.5rem;
+        }
+        .suggestions li:hover, .suggestions li.active { background: #e7f3ff; }
+        .suggestions li .sub { color: #888; font-size: 0.8rem; white-space: nowrap; }
+
+        .buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1rem 0; }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #f5f5f5;
+        }
+        button:hover { background: #e5e5e5; }
+        button.primary { background: #0066cc; color: white; border-color: #0066cc; }
+        button.primary:hover { background: #0055aa; }
+
+        .selected-banner {
+            margin: 0.5rem 0 1rem;
+            padding: 0.6rem 0.9rem;
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            color: #004085;
+        }
+        .selected-banner strong { font-size: 1.05rem; }
+
+        .planner-scroll { overflow-x: auto; padding-bottom: 0.5rem; }
+        .planner-grid {
+            display: grid;
+            grid-template-columns: 172px repeat(24, minmax(28px, 1fr));
+            min-width: 844px;
+            border: 1px solid #e5e5e5;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .row-label {
+            padding: 0.5rem 0.6rem;
+            border-right: 2px solid #ddd;
+            border-bottom: 1px solid #eee;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            gap: 0.1rem;
+            justify-content: center;
+        }
+        .row-label .city { font-weight: 600; font-size: 0.9rem; line-height: 1.2; }
+        .row-label .meta { font-size: 0.75rem; color: #888; }
+        .row-label .now {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #0066cc;
+            font-variant-numeric: tabular-nums;
+        }
+        .row-label .now .date { font-size: 0.75rem; font-weight: 500; color: #666; margin-left: 0.3rem; }
+        .row-label .remove {
+            align-self: flex-start;
+            margin-top: 0.2rem;
+            padding: 0.05rem 0.4rem;
+            font-size: 0.75rem;
+            line-height: 1.4;
+            background: #fff;
+            border: 1px solid #ddd;
+            color: #999;
+        }
+        .row-label .remove:hover { background: #f8d7da; color: #721c24; border-color: #f1b0b7; }
+
+        .cell {
+            border-bottom: 1px solid #eee;
+            border-right: 1px solid #f0f0f0;
+            text-align: center;
+            font-size: 0.7rem;
+            padding: 0.55rem 0;
+            cursor: pointer;
+            color: #555;
+            font-variant-numeric: tabular-nums;
+            user-select: none;
+        }
+        .cell.day { background: #ffffff; }
+        .cell.work { background: #d7f0dd; color: #1b5e2a; }
+        .cell.night { background: #dfe3ea; color: #7a8290; }
+        .cell.sel { box-shadow: inset 0 0 0 2px #0066cc; font-weight: 700; color: #0066cc; }
+        .cell:hover { filter: brightness(0.95); }
+
+        .overlap-label {
+            padding: 0.4rem 0.6rem;
+            border-right: 2px solid #ddd;
+            border-bottom: 1px solid #eee;
+            background: #fafafa;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: #777;
+            display: flex;
+            align-items: center;
+        }
+        .overlap-cell {
+            border-bottom: 1px solid #eee;
+            border-right: 1px solid #f0f0f0;
+            cursor: pointer;
+            height: 12px;
+        }
+        .overlap-cell.good { background: #34a853; }
+        .overlap-cell.sel { box-shadow: inset 0 0 0 2px #0066cc; }
+
+        .legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin: 0.75rem 0;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        .legend span { display: inline-flex; align-items: center; gap: 0.35rem; }
+        .swatch { width: 14px; height: 14px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.1); }
+        .swatch.work { background: #d7f0dd; }
+        .swatch.night { background: #dfe3ea; }
+        .swatch.good { background: #34a853; }
+        .swatch.sel { box-shadow: inset 0 0 0 2px #0066cc; }
+
+        .empty-hint { color: #999; font-style: italic; padding: 1rem 0; }
+
+        .status { margin-top: 0.5rem; padding: 0.5rem; border-radius: 4px; font-size: 0.9rem; }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.info { background: #e7f3ff; color: #004085; }
+        .status:empty { display: none; }
+
+        footer {
+            margin-top: 2rem;
+            padding-top: 1rem;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        footer a { color: #0066cc; }
+
+        @media (max-width: 600px) {
+            .controls { flex-direction: column; align-items: stretch; }
+            .search-wrap { min-width: 0; }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>Timezone Comparison</h1>
+    <p>Compare working hours across timezones to find a meeting slot. Click any hour to see it everywhere at once.</p>
+
+    <div class="controls">
+        <div class="field">
+            <label for="date">Meeting date</label>
+            <input type="date" id="date">
+        </div>
+        <div class="field">
+            <label>Working hours</label>
+            <div class="work-hours">
+                <select id="work-start"></select>
+                <span>to</span>
+                <select id="work-end"></select>
+            </div>
+        </div>
+        <div class="field search-wrap">
+            <label for="zone-search">Add a place</label>
+            <input type="text" id="zone-search" placeholder="Search city or country, e.g. Tokyo, India&hellip;" autocomplete="off">
+            <ul class="suggestions" id="suggestions"></ul>
+        </div>
+    </div>
+
+    <div id="selected-banner" class="selected-banner"></div>
+
+    <div id="planner"></div>
+
+    <div class="legend">
+        <span><span class="swatch work"></span> Working hours</span>
+        <span><span class="swatch night"></span> Night (10pm&ndash;6am)</span>
+        <span><span class="swatch good"></span> Everyone available</span>
+        <span><span class="swatch sel"></span> Selected time</span>
+    </div>
+
+    <div class="buttons">
+        <button class="primary" onclick="shareURL()">Share link</button>
+        <button onclick="resetTool()">Reset</button>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        // ---- Time zone conversion (pure, DST-aware via Intl) ----
+
+        function localPartsAt(instant, timeZone) {
+            const dtf = new Intl.DateTimeFormat('en-US', {
+                timeZone,
+                hourCycle: 'h23',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                weekday: 'short',
+            });
+            const parts = {};
+            for (const p of dtf.formatToParts(instant)) parts[p.type] = p.value;
+            return {
+                year: +parts.year, month: +parts.month, day: +parts.day,
+                hour: +parts.hour, minute: +parts.minute, second: +parts.second,
+                weekday: parts.weekday,
+            };
+        }
+
+        function getOffsetMinutes(instant, timeZone) {
+            const p = localPartsAt(instant, timeZone);
+            const asUTC = Date.UTC(p.year, p.month - 1, p.day, p.hour, p.minute, p.second);
+            return Math.round((asUTC - instant.getTime()) / 60000);
+        }
+
+        function zonedTimeToInstant(timeZone, year, month, day, hour, minute) {
+            const guess = Date.UTC(year, month - 1, day, hour, minute, 0);
+            const offset = getOffsetMinutes(new Date(guess), timeZone);
+            let instant = guess - offset * 60000;
+            const offset2 = getOffsetMinutes(new Date(instant), timeZone);
+            if (offset2 !== offset) instant = guess - offset2 * 60000;
+            return new Date(instant);
+        }
+
+        // ---- Formatting helpers ----
+
+        const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        function fmtOffset(min) {
+            if (min === 0) return 'UTC';
+            const sign = min < 0 ? '-' : '+';
+            const abs = Math.abs(min);
+            const h = Math.floor(abs / 60);
+            const m = abs % 60;
+            return 'UTC' + sign + h + (m ? ':' + String(m).padStart(2, '0') : '');
+        }
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function fmtTime(parts) { return pad2(parts.hour) + ':' + pad2(parts.minute); }
+        function fmtDate(parts) { return parts.weekday + ' ' + parts.day + ' ' + MONTHS[parts.month - 1]; }
+
+        function cityLabel(zone) {
+            const found = CITIES.find(c => c.zone === zone);
+            if (found) return found.label;
+            return zone.split('/').pop().replace(/_/g, ' ');
+        }
+
+        // ---- Curated place list (label + search keywords -> IANA zone) ----
+
+        const CITIES = [
+            { label: 'Honolulu, USA', zone: 'Pacific/Honolulu', kw: 'hawaii united states america' },
+            { label: 'Anchorage, USA', zone: 'America/Anchorage', kw: 'alaska united states america' },
+            { label: 'Los Angeles, USA', zone: 'America/Los_Angeles', kw: 'la san francisco seattle usa united states america pacific west coast california' },
+            { label: 'Vancouver, Canada', zone: 'America/Vancouver', kw: 'canada' },
+            { label: 'Denver, USA', zone: 'America/Denver', kw: 'usa united states america mountain colorado' },
+            { label: 'Phoenix, USA', zone: 'America/Phoenix', kw: 'arizona usa united states america' },
+            { label: 'Chicago, USA', zone: 'America/Chicago', kw: 'usa united states america central texas dallas houston' },
+            { label: 'Mexico City, Mexico', zone: 'America/Mexico_City', kw: 'mexico' },
+            { label: 'New York, USA', zone: 'America/New_York', kw: 'nyc usa united states america eastern boston washington east coast' },
+            { label: 'Toronto, Canada', zone: 'America/Toronto', kw: 'canada ottawa' },
+            { label: 'Bogota, Colombia', zone: 'America/Bogota', kw: 'colombia' },
+            { label: 'Lima, Peru', zone: 'America/Lima', kw: 'peru' },
+            { label: 'Santiago, Chile', zone: 'America/Santiago', kw: 'chile' },
+            { label: 'Caracas, Venezuela', zone: 'America/Caracas', kw: 'venezuela' },
+            { label: 'Halifax, Canada', zone: 'America/Halifax', kw: 'canada atlantic' },
+            { label: 'Sao Paulo, Brazil', zone: 'America/Sao_Paulo', kw: 'brazil rio de janeiro brasil' },
+            { label: 'Buenos Aires, Argentina', zone: 'America/Argentina/Buenos_Aires', kw: 'argentina' },
+            { label: 'Montevideo, Uruguay', zone: 'America/Montevideo', kw: 'uruguay' },
+            { label: 'Azores, Portugal', zone: 'Atlantic/Azores', kw: 'portugal' },
+            { label: 'Reykjavik, Iceland', zone: 'Atlantic/Reykjavik', kw: 'iceland' },
+            { label: 'London, UK', zone: 'Europe/London', kw: 'united kingdom england britain gb uk gmt' },
+            { label: 'Dublin, Ireland', zone: 'Europe/Dublin', kw: 'ireland' },
+            { label: 'Lisbon, Portugal', zone: 'Europe/Lisbon', kw: 'portugal' },
+            { label: 'Accra, Ghana', zone: 'Africa/Accra', kw: 'ghana' },
+            { label: 'Paris, France', zone: 'Europe/Paris', kw: 'france' },
+            { label: 'Berlin, Germany', zone: 'Europe/Berlin', kw: 'germany munich frankfurt' },
+            { label: 'Madrid, Spain', zone: 'Europe/Madrid', kw: 'spain barcelona' },
+            { label: 'Rome, Italy', zone: 'Europe/Rome', kw: 'italy milan' },
+            { label: 'Amsterdam, Netherlands', zone: 'Europe/Amsterdam', kw: 'netherlands holland' },
+            { label: 'Brussels, Belgium', zone: 'Europe/Brussels', kw: 'belgium' },
+            { label: 'Zurich, Switzerland', zone: 'Europe/Zurich', kw: 'switzerland geneva' },
+            { label: 'Stockholm, Sweden', zone: 'Europe/Stockholm', kw: 'sweden' },
+            { label: 'Oslo, Norway', zone: 'Europe/Oslo', kw: 'norway' },
+            { label: 'Vienna, Austria', zone: 'Europe/Vienna', kw: 'austria' },
+            { label: 'Warsaw, Poland', zone: 'Europe/Warsaw', kw: 'poland' },
+            { label: 'Lagos, Nigeria', zone: 'Africa/Lagos', kw: 'nigeria' },
+            { label: 'Cairo, Egypt', zone: 'Africa/Cairo', kw: 'egypt' },
+            { label: 'Johannesburg, South Africa', zone: 'Africa/Johannesburg', kw: 'south africa cape town' },
+            { label: 'Athens, Greece', zone: 'Europe/Athens', kw: 'greece' },
+            { label: 'Helsinki, Finland', zone: 'Europe/Helsinki', kw: 'finland' },
+            { label: 'Bucharest, Romania', zone: 'Europe/Bucharest', kw: 'romania' },
+            { label: 'Kyiv, Ukraine', zone: 'Europe/Kyiv', kw: 'ukraine kiev' },
+            { label: 'Jerusalem, Israel', zone: 'Asia/Jerusalem', kw: 'israel tel aviv' },
+            { label: 'Moscow, Russia', zone: 'Europe/Moscow', kw: 'russia' },
+            { label: 'Istanbul, Turkey', zone: 'Europe/Istanbul', kw: 'turkey' },
+            { label: 'Riyadh, Saudi Arabia', zone: 'Asia/Riyadh', kw: 'saudi arabia' },
+            { label: 'Nairobi, Kenya', zone: 'Africa/Nairobi', kw: 'kenya' },
+            { label: 'Tehran, Iran', zone: 'Asia/Tehran', kw: 'iran' },
+            { label: 'Dubai, UAE', zone: 'Asia/Dubai', kw: 'united arab emirates abu dhabi uae' },
+            { label: 'Baku, Azerbaijan', zone: 'Asia/Baku', kw: 'azerbaijan' },
+            { label: 'Kabul, Afghanistan', zone: 'Asia/Kabul', kw: 'afghanistan' },
+            { label: 'Karachi, Pakistan', zone: 'Asia/Karachi', kw: 'pakistan islamabad lahore' },
+            { label: 'Tashkent, Uzbekistan', zone: 'Asia/Tashkent', kw: 'uzbekistan' },
+            { label: 'Mumbai, India', zone: 'Asia/Kolkata', kw: 'india delhi bangalore bengaluru kolkata chennai hyderabad new delhi' },
+            { label: 'Colombo, Sri Lanka', zone: 'Asia/Colombo', kw: 'sri lanka' },
+            { label: 'Kathmandu, Nepal', zone: 'Asia/Kathmandu', kw: 'nepal' },
+            { label: 'Dhaka, Bangladesh', zone: 'Asia/Dhaka', kw: 'bangladesh' },
+            { label: 'Almaty, Kazakhstan', zone: 'Asia/Almaty', kw: 'kazakhstan' },
+            { label: 'Yangon, Myanmar', zone: 'Asia/Yangon', kw: 'myanmar burma' },
+            { label: 'Bangkok, Thailand', zone: 'Asia/Bangkok', kw: 'thailand' },
+            { label: 'Jakarta, Indonesia', zone: 'Asia/Jakarta', kw: 'indonesia' },
+            { label: 'Hanoi, Vietnam', zone: 'Asia/Ho_Chi_Minh', kw: 'vietnam saigon ho chi minh' },
+            { label: 'Singapore', zone: 'Asia/Singapore', kw: 'singapore' },
+            { label: 'Hong Kong', zone: 'Asia/Hong_Kong', kw: 'hong kong china' },
+            { label: 'Beijing, China', zone: 'Asia/Shanghai', kw: 'china shanghai shenzhen guangzhou' },
+            { label: 'Kuala Lumpur, Malaysia', zone: 'Asia/Kuala_Lumpur', kw: 'malaysia' },
+            { label: 'Manila, Philippines', zone: 'Asia/Manila', kw: 'philippines' },
+            { label: 'Taipei, Taiwan', zone: 'Asia/Taipei', kw: 'taiwan' },
+            { label: 'Perth, Australia', zone: 'Australia/Perth', kw: 'australia' },
+            { label: 'Tokyo, Japan', zone: 'Asia/Tokyo', kw: 'japan osaka' },
+            { label: 'Seoul, South Korea', zone: 'Asia/Seoul', kw: 'south korea' },
+            { label: 'Adelaide, Australia', zone: 'Australia/Adelaide', kw: 'australia' },
+            { label: 'Darwin, Australia', zone: 'Australia/Darwin', kw: 'australia' },
+            { label: 'Sydney, Australia', zone: 'Australia/Sydney', kw: 'australia melbourne canberra' },
+            { label: 'Brisbane, Australia', zone: 'Australia/Brisbane', kw: 'australia queensland' },
+            { label: 'Noumea, New Caledonia', zone: 'Pacific/Noumea', kw: 'new caledonia' },
+            { label: 'Auckland, New Zealand', zone: 'Pacific/Auckland', kw: 'new zealand wellington nz' },
+            { label: 'Fiji', zone: 'Pacific/Fiji', kw: 'fiji suva' },
+            { label: 'UTC', zone: 'UTC', kw: 'utc gmt universal coordinated' },
+        ];
+
+        // ---- State ----
+
+        const STORAGE_KEY = 'timezone-comparison-state';
+        const HOURS = 24;
+
+        function localZone() {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        }
+
+        function todayLocalDate() {
+            const p = localPartsAt(new Date(), localZone());
+            return p.year + '-' + pad2(p.month) + '-' + pad2(p.day);
+        }
+
+        const state = {
+            zones: [],
+            date: todayLocalDate(),
+            selHour: 9,
+            workStart: 9,
+            workEnd: 17,
+        };
+
+        // ---- Rendering ----
+
+        function homeZone() { return state.zones[0]; }
+
+        function axisStart() {
+            const [y, m, d] = state.date.split('-').map(Number);
+            return zonedTimeToInstant(homeZone(), y, m, d, 0, 0).getTime();
+        }
+
+        function instantForColumn(col) {
+            return new Date(axisStart() + col * 3600 * 1000);
+        }
+
+        function hourClass(hour) {
+            if (hour >= state.workStart && hour < state.workEnd) return 'work';
+            if (hour >= 22 || hour < 6) return 'night';
+            return 'day';
+        }
+
+        function render() {
+            const planner = document.getElementById('planner');
+            planner.innerHTML = '';
+
+            if (state.zones.length === 0) {
+                const hint = document.createElement('div');
+                hint.className = 'empty-hint';
+                hint.textContent = 'No places yet. Search above to add a city or country.';
+                planner.appendChild(hint);
+                renderBanner();
+                return;
+            }
+
+            const start = axisStart();
+            const selInstant = instantForColumn(state.selHour);
+
+            // Precompute the local hour of each zone at each column for shading + overlap.
+            const grid = document.createElement('div');
+            grid.className = 'planner-grid';
+
+            // Overlap summary row: a column is "good" when every zone is within working hours.
+            const overlapLabel = document.createElement('div');
+            overlapLabel.className = 'overlap-label';
+            overlapLabel.textContent = 'Overlap';
+            grid.appendChild(overlapLabel);
+
+            const zoneHours = state.zones.map(z =>
+                Array.from({ length: HOURS }, (_, col) =>
+                    localPartsAt(new Date(start + col * 3600 * 1000), z).hour));
+
+            for (let col = 0; col < HOURS; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'overlap-cell';
+                const allWork = zoneHours.every(hours =>
+                    hours[col] >= state.workStart && hours[col] < state.workEnd);
+                if (allWork) cell.classList.add('good');
+                if (col === state.selHour) cell.classList.add('sel');
+                cell.dataset.col = col;
+                cell.title = allWork ? 'Everyone is within working hours' : '';
+                grid.appendChild(cell);
+            }
+
+            // One row per zone.
+            state.zones.forEach((zone, zi) => {
+                const label = document.createElement('div');
+                label.className = 'row-label';
+
+                const city = document.createElement('div');
+                city.className = 'city';
+                city.textContent = cityLabel(zone);
+                label.appendChild(city);
+
+                const nowParts = localPartsAt(selInstant, zone);
+                const now = document.createElement('div');
+                now.className = 'now';
+                now.innerHTML = fmtTime(nowParts) + '<span class="date">' + fmtDate(nowParts) + '</span>';
+                label.appendChild(now);
+
+                const meta = document.createElement('div');
+                meta.className = 'meta';
+                meta.textContent = fmtOffset(getOffsetMinutes(selInstant, zone));
+                label.appendChild(meta);
+
+                const remove = document.createElement('button');
+                remove.className = 'remove';
+                remove.textContent = '✕ remove';
+                remove.addEventListener('click', () => removeZone(zi));
+                label.appendChild(remove);
+
+                grid.appendChild(label);
+
+                for (let col = 0; col < HOURS; col++) {
+                    const hour = zoneHours[zi][col];
+                    const cell = document.createElement('div');
+                    cell.className = 'cell ' + hourClass(hour);
+                    if (col === state.selHour) cell.classList.add('sel');
+                    cell.textContent = hour;
+                    cell.dataset.col = col;
+                    grid.appendChild(cell);
+                }
+            });
+
+            const scroll = document.createElement('div');
+            scroll.className = 'planner-scroll';
+            scroll.appendChild(grid);
+            planner.appendChild(scroll);
+
+            grid.addEventListener('click', e => {
+                const target = e.target.closest('[data-col]');
+                if (!target) return;
+                state.selHour = Number(target.dataset.col);
+                persist();
+                render();
+            });
+
+            renderBanner();
+        }
+
+        function renderBanner() {
+            const banner = document.getElementById('selected-banner');
+            if (state.zones.length === 0) { banner.textContent = ''; return; }
+            const selInstant = instantForColumn(state.selHour);
+            const home = homeZone();
+            const p = localPartsAt(selInstant, home);
+            banner.innerHTML = 'Selected meeting time: <strong>' + fmtTime(p) + '</strong> ' +
+                fmtDate(p) + ' in ' + cityLabel(home) + ' (' + fmtOffset(getOffsetMinutes(selInstant, home)) + ')';
+        }
+
+        // ---- Zone management ----
+
+        function addZone(zone) {
+            if (state.zones.includes(zone)) {
+                showStatus(cityLabel(zone) + ' is already in the list', 'info');
+                return;
+            }
+            state.zones.push(zone);
+            persist();
+            render();
+        }
+
+        function removeZone(index) {
+            state.zones.splice(index, 1);
+            persist();
+            render();
+        }
+
+        // ---- Search ----
+
+        function searchZones(query) {
+            const q = query.trim().toLowerCase();
+            if (!q) return [];
+            const results = [];
+            const seen = new Set();
+            for (const c of CITIES) {
+                if ((c.label + ' ' + c.kw).toLowerCase().includes(q)) {
+                    results.push({ label: c.label, zone: c.zone });
+                    seen.add(c.zone);
+                }
+                if (results.length >= 8) break;
+            }
+            if (results.length < 8 && typeof Intl.supportedValuesOf === 'function') {
+                for (const z of Intl.supportedValuesOf('timeZone')) {
+                    if (seen.has(z)) continue;
+                    if (z.toLowerCase().replace(/_/g, ' ').includes(q)) {
+                        results.push({ label: z.replace(/_/g, ' '), zone: z });
+                        seen.add(z);
+                    }
+                    if (results.length >= 8) break;
+                }
+            }
+            return results;
+        }
+
+        let activeSuggestion = -1;
+
+        function renderSuggestions(query) {
+            const list = document.getElementById('suggestions');
+            const results = searchZones(query);
+            list.innerHTML = '';
+            activeSuggestion = -1;
+            results.forEach((r, i) => {
+                const li = document.createElement('li');
+                const name = document.createElement('span');
+                name.textContent = r.label;
+                const sub = document.createElement('span');
+                sub.className = 'sub';
+                sub.textContent = r.zone;
+                li.appendChild(name);
+                li.appendChild(sub);
+                li.addEventListener('mousedown', e => {
+                    e.preventDefault();
+                    pickSuggestion(r.zone);
+                });
+                list.appendChild(li);
+            });
+        }
+
+        function pickSuggestion(zone) {
+            addZone(zone);
+            const input = document.getElementById('zone-search');
+            input.value = '';
+            document.getElementById('suggestions').innerHTML = '';
+        }
+
+        // ---- Persistence (URL + localStorage) ----
+
+        function persist() {
+            const params = new URLSearchParams();
+            params.set('zones', state.zones.join(','));
+            params.set('date', state.date);
+            params.set('t', state.selHour);
+            params.set('w', state.workStart + '-' + state.workEnd);
+            const query = '?' + params.toString();
+            window.history.replaceState({}, '', query);
+            localStorage.setItem(STORAGE_KEY, query);
+        }
+
+        function applyQuery(query) {
+            const params = new URLSearchParams(query);
+            const zones = params.get('zones');
+            if (zones !== null) {
+                state.zones = zones.split(',').filter(z => z && isValidZone(z));
+            }
+            if (params.get('date')) state.date = params.get('date');
+            if (params.get('t') !== null) {
+                const t = parseInt(params.get('t'), 10);
+                if (t >= 0 && t < HOURS) state.selHour = t;
+            }
+            const w = params.get('w');
+            if (w && /^\d{1,2}-\d{1,2}$/.test(w)) {
+                const [s, e] = w.split('-').map(Number);
+                if (s >= 0 && s <= 24 && e >= 0 && e <= 24 && s < e) {
+                    state.workStart = s;
+                    state.workEnd = e;
+                }
+            }
+            return zones !== null;
+        }
+
+        function isValidZone(zone) {
+            try {
+                new Intl.DateTimeFormat('en-US', { timeZone: zone });
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function loadState() {
+            let loaded = false;
+            if (window.location.search.length > 1) {
+                loaded = applyQuery(window.location.search);
+            }
+            if (!loaded) {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) loaded = applyQuery(stored);
+            }
+            if (state.zones.length === 0) {
+                // Sensible starter set: the user's own zone plus two common hubs.
+                const defaults = [localZone(), 'America/New_York', 'Europe/London'];
+                state.zones = defaults.filter((z, i) => defaults.indexOf(z) === i);
+            }
+        }
+
+        // ---- Controls wiring ----
+
+        function populateHourSelects() {
+            const start = document.getElementById('work-start');
+            const end = document.getElementById('work-end');
+            for (let h = 0; h <= 24; h++) {
+                const label = pad2(h) + ':00';
+                start.appendChild(new Option(label, h));
+                end.appendChild(new Option(label, h));
+            }
+        }
+
+        function showStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = 'status ' + type;
+            if (type !== 'error') {
+                setTimeout(() => { status.textContent = ''; status.className = 'status'; }, 3000);
+            }
+        }
+
+        function shareURL() {
+            persist();
+            const url = window.location.origin + window.location.pathname + window.location.search;
+            navigator.clipboard.writeText(url).then(() => {
+                showStatus('Share link copied to clipboard', 'success');
+            }).catch(() => {
+                showStatus('Link is in the address bar — copy it from there', 'info');
+            });
+        }
+
+        function resetTool() {
+            localStorage.removeItem(STORAGE_KEY);
+            state.zones = [localZone()];
+            state.date = todayLocalDate();
+            state.workStart = 9;
+            state.workEnd = 17;
+            state.selHour = 9;
+            syncControls();
+            persist();
+            render();
+            showStatus('Reset to your local timezone', 'info');
+        }
+
+        function syncControls() {
+            document.getElementById('date').value = state.date;
+            document.getElementById('work-start').value = state.workStart;
+            document.getElementById('work-end').value = state.workEnd;
+        }
+
+        function init() {
+            populateHourSelects();
+            loadState();
+            syncControls();
+            render();
+
+            document.getElementById('date').addEventListener('change', e => {
+                state.date = e.target.value || todayLocalDate();
+                persist();
+                render();
+            });
+
+            document.getElementById('work-start').addEventListener('change', e => {
+                const v = Number(e.target.value);
+                if (v < state.workEnd) { state.workStart = v; persist(); render(); }
+                else { e.target.value = state.workStart; }
+            });
+
+            document.getElementById('work-end').addEventListener('change', e => {
+                const v = Number(e.target.value);
+                if (v > state.workStart) { state.workEnd = v; persist(); render(); }
+                else { e.target.value = state.workEnd; }
+            });
+
+            const search = document.getElementById('zone-search');
+            search.addEventListener('input', e => renderSuggestions(e.target.value));
+            search.addEventListener('keydown', e => {
+                const list = document.getElementById('suggestions');
+                const items = Array.from(list.children);
+                if (e.key === 'ArrowDown' && items.length) {
+                    e.preventDefault();
+                    activeSuggestion = Math.min(activeSuggestion + 1, items.length - 1);
+                } else if (e.key === 'ArrowUp' && items.length) {
+                    e.preventDefault();
+                    activeSuggestion = Math.max(activeSuggestion - 1, 0);
+                } else if (e.key === 'Enter') {
+                    const results = searchZones(e.target.value);
+                    const pick = results[activeSuggestion >= 0 ? activeSuggestion : 0];
+                    if (pick) pickSuggestion(pick.zone);
+                    return;
+                } else if (e.key === 'Escape') {
+                    list.innerHTML = '';
+                    return;
+                } else {
+                    return;
+                }
+                items.forEach((li, i) => li.classList.toggle('active', i === activeSuggestion));
+            });
+            search.addEventListener('blur', () => {
+                setTimeout(() => { document.getElementById('suggestions').innerHTML = ''; }, 150);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
