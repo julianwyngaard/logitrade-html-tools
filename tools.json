@@ -103,6 +103,14 @@
       "category": "networking",
       "created": "2026-06-28",
       "updated": "2026-06-28"
+    },
+    {
+      "slug": "color-picker",
+      "name": "Color Picker",
+      "description": "Pick colors visually, convert between hex, RGB, and HSL, and sample any color on screen with the eyedropper. Shareable via URL.",
+      "category": "image",
+      "created": "2026-07-01",
+      "updated": "2026-07-01"
     }
   ],
   "categories": {
