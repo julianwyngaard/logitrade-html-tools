@@ -19,3 +19,6 @@ build/
 # Claude Code
 .claude/settings.local.json
 /.superpowers
+
+# Playwright MCP scratch output
+.playwright-mcp/

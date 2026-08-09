@@ -20,6 +20,7 @@
             --night-ink: #97a1b0;
             --good: #2e9e57;
             --sel-bg: #e1efff;
+            --now: #e8590c;
         }
         * { box-sizing: border-box; }
         body {
@@ -159,18 +160,28 @@
         }
         .planner-grid {
             display: grid;
-            grid-template-columns: var(--label-w) repeat(24, minmax(30px, 1fr));
-            min-width: 850px;
+            /* grid-template-columns and min-width are set inline: a local day is
+               23, 24 or 25 hours long depending on daylight saving, so the column
+               count cannot be hard-coded here. */
             border: 1px solid var(--line);
             border-radius: 10px;
-            overflow: hidden;
             background: #fff;
+        }
+
+        /* The label column stays put while the hour strip scrolls sideways.
+           Note: .planner-grid must NOT have overflow:hidden, or it becomes the
+           scrollport and sticky silently stops working. */
+        .corner, .row-label {
+            position: sticky;
+            left: 0;
+            z-index: 2;
         }
 
         .corner {
             border-right: 2px solid var(--line);
             border-bottom: 1px solid var(--line);
             background: #fbfcfd;
+            border-top-left-radius: 9px;
             display: flex;
             align-items: center;
             padding: 0 0.7rem;
@@ -189,9 +200,17 @@
         .overlap-cell.good { background: var(--good); }
         .overlap-cell.sel { box-shadow: inset 1px 0 0 var(--primary), inset -1px 0 0 var(--primary); }
         .overlap-cell.daybreak { border-left: 1px solid #d8dde4; }
+        .overlap-cell.last-col { border-top-right-radius: 9px; border-right: none; }
+        .overlap-cell:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: -2px;
+        }
+        .cell.now-col, .overlap-cell.now-col { border-left: 2px solid var(--now); }
 
         .row-label {
-            position: relative;
+            /* No `position: relative` here — it would override the sticky rule
+               above. Sticky is also a positioned ancestor, so the absolutely
+               positioned remove button still anchors to this element. */
             padding: 0.55rem 0.7rem;
             border-right: 2px solid var(--line);
             border-bottom: 1px solid var(--line);
@@ -201,8 +220,12 @@
             justify-content: center;
             gap: 0.05rem;
         }
-        .planner-grid > .row-label:last-of-type,
-        .planner-grid > .cell:last-child { border-bottom: none; }
+        /* Tagged in JS: `:last-of-type` matched on tag name, so it never
+           selected the final .row-label (every grid child is a div). */
+        .planner-grid > .row-label.last-row,
+        .planner-grid > .cell.last-row { border-bottom: none; }
+        .row-label.last-row { border-bottom-left-radius: 9px; }
+        .cell.last-cell { border-bottom-right-radius: 9px; }
         .row-label .city {
             font-weight: 650;
             font-size: 0.92rem;
@@ -261,8 +284,16 @@
             opacity: 0;
             transition: opacity 0.12s, background 0.12s, color 0.12s;
         }
-        .row-label:hover .remove { opacity: 1; }
+        .row-label:hover .remove,
+        .row-label:focus-within .remove,
+        .row-label .remove:focus-visible { opacity: 1; }
         .row-label .remove:hover { background: #fdecee; color: #c0392b; }
+        .row-label .remove:focus-visible { outline: 2px solid var(--primary); }
+        /* Touch devices have no hover, so the control must always be visible —
+           otherwise zones can never be removed on a phone. */
+        @media (hover: none) {
+            .row-label .remove { opacity: 1; color: #8a929e; }
+        }
 
         .cell {
             border-bottom: 1px solid var(--line);
@@ -281,6 +312,16 @@
         .cell.night { background: var(--night-bg); color: var(--night-ink); }
         .cell.daybreak { border-left: 1px solid #d8dde4; }
         .cell.hover:not(.sel) { background: rgba(0,102,204,0.07); }
+        .cell.half { font-size: 0.62rem; }
+        .cell .abbr {
+            display: block;
+            font-size: 0.5rem;
+            line-height: 1;
+            letter-spacing: 0.02em;
+            opacity: 0.8;
+            font-weight: 600;
+        }
+        .cell.ambiguous { position: relative; padding: 0.35rem 0; }
         .cell.sel {
             background: var(--sel-bg);
             color: var(--primary);
@@ -303,7 +344,16 @@
         .swatch.night { background: var(--night-bg); }
         .swatch.good { background: var(--good); border-color: var(--good); }
         .swatch.sel { background: var(--sel-bg); box-shadow: inset 0 0 0 1.5px var(--primary); }
+        .swatch.now { background: #fff; border-left: 3px solid var(--now); border-radius: 0; width: 8px; }
 
+        .no-overlap {
+            margin: 0.6rem 0 0;
+            padding: 0.5rem 0.75rem;
+            border-radius: 7px;
+            background: #fdf3e3;
+            color: #8a5a12;
+            font-size: 0.85rem;
+        }
         .empty-hint {
             color: var(--muted);
             padding: 1.5rem 1rem;
@@ -333,7 +383,6 @@
             h1 { font-size: 1.55rem; }
             .controls { flex-direction: column; align-items: stretch; }
             .search-wrap { min-width: 0; }
-            .planner-grid { min-width: 720px; }
             .row-label .now { font-size: 1.15rem; }
         }
     </style>
@@ -363,7 +412,7 @@
         </div>
     </div>
 
-    <div id="selected-banner" class="selected-banner"></div>
+    <div id="selected-banner" class="selected-banner" aria-live="polite"></div>
 
     <div id="planner"></div>
 
@@ -373,6 +422,7 @@
         <span><span class="swatch night"></span> Night (10pm&ndash;6am)</span>
         <span><span class="swatch good"></span> Everyone available</span>
         <span><span class="swatch sel"></span> Selected time</span>
+        <span><span class="swatch now"></span> Right now</span>
     </div>
 
     <div class="buttons">
@@ -380,7 +430,7 @@
         <button onclick="resetTool()">Reset</button>
     </div>
 
-    <div id="status" class="status"></div>
+    <div id="status" class="status" role="status" aria-live="polite"></div>
 
     <footer>
         <a href="index.html">tools.julianwyngaard.dev</a> |
@@ -420,6 +470,34 @@
             const offset2 = getOffsetMinutes(new Date(instant), timeZone);
             if (offset2 !== offset) instant = guess - offset2 * 60000;
             return new Date(instant);
+        }
+
+        // Short zone name (EST, BST, GMT+8) — used to tell apart the repeated
+        // hour when clocks go back and the same local time happens twice.
+        function zoneAbbr(instant, timeZone) {
+            try {
+                const parts = new Intl.DateTimeFormat('en-US', {
+                    timeZone, hour: 'numeric', timeZoneName: 'short',
+                }).formatToParts(instant);
+                const found = parts.find(p => p.type === 'timeZoneName');
+                return found ? found.value : '';
+            } catch (e) {
+                return '';
+            }
+        }
+
+        // First instant that actually falls on the given local date. Normally
+        // this is local midnight, but where DST springs forward at 00:00
+        // (Santiago, Beirut, Cuba) midnight does not exist, so step forward to
+        // the first hour that does.
+        function dayStartInstant(timeZone, year, month, day) {
+            let t = zonedTimeToInstant(timeZone, year, month, day, 0, 0).getTime();
+            const target = Date.UTC(year, month - 1, day) / 86400000;
+            for (let i = 0; i < 6; i++) {
+                if (dayNumber(localPartsAt(new Date(t), timeZone)) >= target) break;
+                t += 3600000;
+            }
+            return t;
         }
 
         // ---- Formatting helpers ----
@@ -582,10 +660,33 @@
         // ---- State ----
 
         const STORAGE_KEY = 'timezone-comparison-state';
-        const HOURS = 24;
+        // Upper bound for a stored/shared column index. A day is at most 25
+        // hours; the extra slack is clamped against the real count on render.
+        const MAX_COLS = 26;
 
+        // ICU reports 'Etc/Unknown' when the host time zone cannot be mapped to
+        // an IANA name (e.g. TZ is set to a POSIX string like "NZST-12"). That
+        // is a truthy string, so a plain `|| 'UTC'` fallback does not catch it
+        // and every later conversion throws.
         function localZone() {
-            return Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+            let zone;
+            try {
+                zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+            } catch (e) {
+                return 'UTC';
+            }
+            if (!zone || zone === 'Etc/Unknown' || !isValidZone(zone)) return 'UTC';
+            return zone;
+        }
+
+        function isValidDateStr(s) {
+            if (typeof s !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+            const [y, m, d] = s.split('-').map(Number);
+            // Reject values that silently roll over, e.g. 2026-13-45.
+            const probe = new Date(Date.UTC(y, m - 1, d));
+            return probe.getUTCFullYear() === y
+                && probe.getUTCMonth() === m - 1
+                && probe.getUTCDate() === d;
         }
 
         function todayLocalDate() {
@@ -597,28 +698,59 @@
             zones: [],
             labels: {},
             date: todayLocalDate(),
-            selHour: 9,
+            selCol: 9,
             workStart: 9,
             workEnd: 17,
         };
+
+        // Instants for each column of the current day, in the anchor zone.
+        // Length is 23, 24 or 25 depending on daylight saving.
+        let columns = [];
 
         // ---- Rendering ----
 
         function homeZone() { return state.zones[0]; }
 
-        function axisStart() {
+        // One column per real hour between this local date's first instant and
+        // the next day's. That is 23 hours on a spring-forward day and 25 on a
+        // fall-back day — assuming a flat 24 dropped or duplicated an hour.
+        function buildColumns() {
+            const zone = homeZone();
             const [y, m, d] = state.date.split('-').map(Number);
-            return zonedTimeToInstant(homeZone(), y, m, d, 0, 0).getTime();
+            const start = dayStartInstant(zone, y, m, d);
+            const nx = new Date(Date.UTC(y, m - 1, d + 1));
+            const end = dayStartInstant(zone, nx.getUTCFullYear(), nx.getUTCMonth() + 1, nx.getUTCDate());
+            const cols = [];
+            for (let t = start; t < end && cols.length < 30; t += 3600000) cols.push(t);
+            return cols.length ? cols : [start];
         }
 
         function instantForColumn(col) {
-            return new Date(axisStart() + col * 3600 * 1000);
+            const clamped = Math.min(Math.max(col, 0), columns.length - 1);
+            return new Date(columns[clamped]);
         }
 
-        function hourClass(hour) {
-            if (hour >= state.workStart && hour < state.workEnd) return 'work';
-            if (hour >= 22 || hour < 6) return 'night';
+        // Fractional local hour, so zones offset by :30 or :45 (India, Nepal,
+        // Adelaide, Chatham) are classified by their real local time.
+        function hourValue(parts) { return parts.hour + parts.minute / 60; }
+
+        function inWork(hv) {
+            const s = state.workStart, e = state.workEnd;
+            return s < e ? (hv >= s && hv < e) : (hv >= s || hv < e);
+        }
+
+        function hourClass(hv) {
+            if (inWork(hv)) return 'work';
+            if (hv >= 22 || hv < 6) return 'night';
             return 'day';
+        }
+
+        function nowColumn() {
+            const now = Date.now();
+            for (let i = 0; i < columns.length; i++) {
+                if (now >= columns[i] && now < columns[i] + 3600000) return i;
+            }
+            return -1;
         }
 
         let hoverCol = -1;
@@ -649,17 +781,22 @@
                 return;
             }
 
-            const start = axisStart();
-            const selInstant = instantForColumn(state.selHour);
+            columns = buildColumns();
+            state.selCol = Math.min(Math.max(state.selCol, 0), columns.length - 1);
+
+            const selInstant = instantForColumn(state.selCol);
             const anchorDay = dayNumber(localPartsAt(selInstant, homeZone()));
+            const nowCol = nowColumn();
 
             const grid = document.createElement('div');
             grid.className = 'planner-grid';
+            grid.style.gridTemplateColumns =
+                'var(--label-w) repeat(' + columns.length + ', minmax(32px, 1fr))';
+            grid.style.minWidth = 'calc(var(--label-w) + ' + columns.length + ' * 32px)';
 
-            // Local hour of each zone at each column, reused for shading + overlap.
-            const zoneHours = state.zones.map(z =>
-                Array.from({ length: HOURS }, (_, col) =>
-                    localPartsAt(new Date(start + col * 3600 * 1000), z).hour));
+            // Local parts of each zone at each column, reused for shading + overlap.
+            const zoneParts = state.zones.map(z =>
+                columns.map(t => localPartsAt(new Date(t), z)));
 
             // Overlap summary row: a column is "good" when every zone is within working hours.
             const corner = document.createElement('div');
@@ -667,15 +804,20 @@
             corner.textContent = 'Overlap';
             grid.appendChild(corner);
 
-            for (let col = 0; col < HOURS; col++) {
+            let overlapCount = 0;
+            for (let col = 0; col < columns.length; col++) {
                 const cell = document.createElement('div');
                 cell.className = 'overlap-cell';
-                const allWork = zoneHours.every(hours =>
-                    hours[col] >= state.workStart && hours[col] < state.workEnd);
-                if (allWork) cell.classList.add('good');
-                if (zoneHours[0][col] === 0) cell.classList.add('daybreak');
-                if (col === state.selHour) cell.classList.add('sel');
+                const allWork = zoneParts.every(parts => inWork(hourValue(parts[col])));
+                if (allWork) { cell.classList.add('good'); overlapCount++; }
+                if (zoneParts[0][col].hour === 0) cell.classList.add('daybreak');
+                if (col === state.selCol) cell.classList.add('sel');
+                if (col === nowCol) cell.classList.add('now-col');
+                if (col === columns.length - 1) cell.classList.add('last-col');
                 cell.dataset.col = col;
+                cell.setAttribute('role', 'button');
+                cell.tabIndex = col === state.selCol ? 0 : -1;
+                cell.setAttribute('aria-label', overlapLabel(col, allWork));
                 cell.title = allWork ? 'Everyone is within working hours' : '';
                 grid.appendChild(cell);
             }
@@ -712,15 +854,49 @@
                 remove.addEventListener('click', () => removeZone(zi));
                 label.appendChild(remove);
 
+                if (zi === state.zones.length - 1) label.classList.add('last-row');
                 grid.appendChild(label);
 
-                for (let col = 0; col < HOURS; col++) {
-                    const hour = zoneHours[zi][col];
+                // A repeated local hour means clocks went back, so the same wall
+                // time occurs twice; tag those cells with the zone abbreviation.
+                const seenHours = {};
+                zoneParts[zi].forEach(p => {
+                    const key = p.hour + '@' + dayNumber(p);
+                    seenHours[key] = (seenHours[key] || 0) + 1;
+                });
+
+                for (let col = 0; col < columns.length; col++) {
+                    const p = zoneParts[zi][col];
                     const cell = document.createElement('div');
-                    cell.className = 'cell ' + hourClass(hour);
-                    if (hour === 0) cell.classList.add('daybreak');
-                    if (col === state.selHour) cell.classList.add('sel');
-                    cell.textContent = hour;
+                    cell.className = 'cell ' + hourClass(hourValue(p));
+                    if (p.hour === 0 && p.minute === 0) cell.classList.add('daybreak');
+                    if (col === state.selCol) cell.classList.add('sel');
+                    if (col === nowCol) cell.classList.add('now-col');
+                    if (zi === state.zones.length - 1) cell.classList.add('last-row');
+                    if (zi === state.zones.length - 1 && col === columns.length - 1) {
+                        cell.classList.add('last-cell');
+                    }
+
+                    if (p.minute !== 0) cell.classList.add('half');
+                    cell.textContent = p.minute !== 0
+                        ? p.hour + ':' + pad2(p.minute)
+                        : String(p.hour);
+
+                    const abbr = zoneAbbr(new Date(columns[col]), zone);
+                    if (seenHours[p.hour + '@' + dayNumber(p)] > 1 && abbr) {
+                        cell.classList.add('ambiguous');
+                        const tag = document.createElement('span');
+                        tag.className = 'abbr';
+                        // "GMT+10:30" would overflow a 32px cell; the offset
+                        // alone still separates the two repeated hours.
+                        tag.textContent = /^(GMT|UTC)/.test(abbr)
+                            ? abbr.replace(/^(GMT|UTC)/, '') || '±0'
+                            : abbr;
+                        cell.appendChild(tag);
+                    }
+
+                    cell.title = fmtTime(p) + ' ' + fmtDate(p) +
+                        (abbr ? ' ' + abbr : '') + ' — ' + cityLabel(zone);
                     cell.dataset.col = col;
                     grid.appendChild(cell);
                 }
@@ -731,12 +907,19 @@
             scroll.appendChild(grid);
             planner.appendChild(scroll);
 
+            if (state.zones.length > 1 && overlapCount === 0) {
+                const note = document.createElement('p');
+                note.className = 'no-overlap';
+                note.textContent = 'No hour works for everyone at ' + pad2(state.workStart) +
+                    ':00–' + pad2(state.workEnd) + ':00. Widen the working hours, or pick an ' +
+                    'amber slot where someone is at least awake.';
+                planner.appendChild(note);
+            }
+
             grid.addEventListener('click', e => {
                 const target = e.target.closest('[data-col]');
                 if (!target) return;
-                state.selHour = Number(target.dataset.col);
-                persist();
-                applySelection();
+                selectColumn(Number(target.dataset.col));
             });
             grid.addEventListener('mouseover', e => {
                 const target = e.target.closest('[data-col]');
@@ -744,18 +927,51 @@
             });
             grid.addEventListener('mouseleave', () => highlightColumn(-1));
 
+            // Roving tabindex on the overlap row: the whole point of the tool is
+            // picking a column, so that has to work without a mouse.
+            grid.addEventListener('keydown', e => {
+                if (!e.target.closest('.overlap-cell')) return;
+                let next;
+                if (e.key === 'ArrowRight') next = state.selCol + 1;
+                else if (e.key === 'ArrowLeft') next = state.selCol - 1;
+                else if (e.key === 'Home') next = 0;
+                else if (e.key === 'End') next = columns.length - 1;
+                else return;
+                e.preventDefault();
+                selectColumn(Math.min(Math.max(next, 0), columns.length - 1));
+                const moved = grid.querySelector('.overlap-cell[data-col="' + state.selCol + '"]');
+                if (moved) moved.focus();
+            });
+
             renderBanner();
+        }
+
+        function selectColumn(col) {
+            state.selCol = col;
+            persist();
+            applySelection();
+        }
+
+        function overlapLabel(col, allWork) {
+            const p = localPartsAt(new Date(columns[col]), homeZone());
+            return fmtTime(p) + ' ' + fmtDate(p) +
+                (allWork ? ' — everyone is within working hours' : '');
         }
 
         function renderBanner() {
             const banner = document.getElementById('selected-banner');
             if (state.zones.length === 0) { banner.textContent = ''; return; }
-            const selInstant = instantForColumn(state.selHour);
+            const selInstant = instantForColumn(state.selCol);
             const home = homeZone();
             const p = localPartsAt(selInstant, home);
+            // Only add a real abbreviation (EST, BST, IST) — "GMT+5:30" style
+            // names just repeat the offset we already print.
+            const abbr = zoneAbbr(selInstant, home);
+            const useAbbr = abbr && !/^(GMT|UTC)([+-]|$)/.test(abbr);
             banner.innerHTML = 'Meeting at <span class="big">' + fmtTime(p) + '</span> ' +
                 '<span class="where">' + fmtDate(p) + ' in ' + escapeHTML(cityLabel(home)) +
-                ' (' + fmtOffset(getOffsetMinutes(selInstant, home)) + ')</span>';
+                ' (' + fmtOffset(getOffsetMinutes(selInstant, home)) +
+                (useAbbr ? ', ' + escapeHTML(abbr) : '') + ')</span>';
         }
 
         // Update only what depends on the selected hour, in place, so picking a
@@ -764,9 +980,12 @@
             const grid = document.querySelector('.planner-grid');
             if (!grid) { render(); return; }
             grid.querySelectorAll('.sel').forEach(el => el.classList.remove('sel'));
-            grid.querySelectorAll('[data-col="' + state.selHour + '"]').forEach(el => el.classList.add('sel'));
+            grid.querySelectorAll('[data-col="' + state.selCol + '"]').forEach(el => el.classList.add('sel'));
+            grid.querySelectorAll('.overlap-cell').forEach(el => {
+                el.tabIndex = Number(el.dataset.col) === state.selCol ? 0 : -1;
+            });
 
-            const selInstant = instantForColumn(state.selHour);
+            const selInstant = instantForColumn(state.selCol);
             const anchorDay = dayNumber(localPartsAt(selInstant, homeZone()));
             const labelEls = grid.querySelectorAll('.row-label');
             state.zones.forEach((zone, zi) => {
@@ -794,17 +1013,33 @@
                 return;
             }
             state.zones.push(zone);
-            if (label) state.labels[zone] = label;
+            if (label) state.labels[zone] = sanitizeLabel(label);
             persist();
-            render();
+            safeRender();
         }
 
         function removeZone(index) {
             const zone = state.zones[index];
+            // Removing row 0 re-anchors the axis, so hold the chosen *instant*
+            // rather than the column number — otherwise the meeting silently
+            // moves to a different time.
+            const keepInstant = columns.length ? columns[state.selCol] : null;
             state.zones.splice(index, 1);
             delete state.labels[zone];
+            safeRender();
+            if (keepInstant !== null && columns.length) {
+                let best = 0;
+                let bestDelta = Infinity;
+                columns.forEach((t, i) => {
+                    const delta = Math.abs(t - keepInstant);
+                    if (delta < bestDelta) { bestDelta = delta; best = i; }
+                });
+                if (best !== state.selCol) {
+                    state.selCol = best;
+                    applySelection();
+                }
+            }
             persist();
-            render();
         }
 
         // ---- Search ----
@@ -812,16 +1047,33 @@
         function searchZones(query) {
             const q = query.trim().toLowerCase();
             if (!q) return [];
+
+            // Rank name matches above keyword matches, then keep only the best
+            // entry per zone — otherwise a query like "usa" fills every slot
+            // with the six cities that all share America/Los_Angeles.
+            const scored = [];
+            CITIES.forEach((c, i) => {
+                const label = c.label.toLowerCase();
+                let score;
+                if (label.startsWith(q)) score = 0;
+                else if (label.includes(q)) score = 1;
+                else if ((' ' + c.kw).includes(' ' + q)) score = 2;
+                else if (c.kw.includes(q)) score = 3;
+                else return;
+                scored.push({ label: c.label, zone: c.zone, score, i });
+            });
+            scored.sort((a, b) => a.score - b.score || a.i - b.i);
+
             const results = [];
             const seen = new Set();
-            for (const c of CITIES) {
-                if ((c.label + ' ' + c.kw).toLowerCase().includes(q)) {
-                    results.push({ label: c.label, zone: c.zone });
-                }
+            for (const r of scored) {
+                if (seen.has(r.zone)) continue;
+                seen.add(r.zone);
+                results.push({ label: r.label, zone: r.zone });
                 if (results.length >= 8) break;
             }
+
             if (results.length < 8 && typeof Intl.supportedValuesOf === 'function') {
-                results.forEach(r => seen.add(r.zone));
                 for (const z of Intl.supportedValuesOf('timeZone')) {
                     if (seen.has(z)) continue;
                     if (z.toLowerCase().replace(/_/g, ' ').includes(q)) {
@@ -870,38 +1122,61 @@
         function persist() {
             const params = new URLSearchParams();
             params.set('zones', state.zones.join(','));
+            // Carry the chosen names too, so a shared link shows "Portland"
+            // rather than whichever city happens to head that zone's entry.
+            params.set('names', state.zones.map(z => cityLabel(z)).join('|'));
             params.set('date', state.date);
-            params.set('t', state.selHour);
+            params.set('t', state.selCol);
             params.set('w', state.workStart + '-' + state.workEnd);
             window.history.replaceState({}, '', '?' + params.toString());
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                zones: state.zones,
-                labels: state.labels,
-                date: state.date,
-                selHour: state.selHour,
-                workStart: state.workStart,
-                workEnd: state.workEnd,
-            }));
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    zones: state.zones,
+                    labels: state.labels,
+                    date: state.date,
+                    selCol: state.selCol,
+                    workStart: state.workStart,
+                    workEnd: state.workEnd,
+                }));
+            } catch (e) { /* private mode or quota — sharing still works */ }
+        }
+
+        // Labels round-trip through the URL, so keep them short and inert.
+        function sanitizeLabel(s) {
+            return String(s).replace(/[<>]/g, '').trim().slice(0, 60);
         }
 
         function applyWorkWindow(w) {
             if (w && /^\d{1,2}-\d{1,2}$/.test(w)) {
                 const [s, e] = w.split('-').map(Number);
-                if (s >= 0 && s <= 24 && e >= 0 && e <= 24 && s < e) {
+                // s > e is allowed and means an overnight shift (e.g. 22-06).
+                if (s >= 0 && s <= 23 && e >= 1 && e <= 24 && s !== e) {
                     state.workStart = s;
                     state.workEnd = e;
                 }
             }
         }
 
+        function applyZoneList(rawZones, rawNames) {
+            const seen = new Set();
+            state.zones = [];
+            rawZones.forEach((z, i) => {
+                if (!z || seen.has(z) || !isValidZone(z)) return;
+                seen.add(z);
+                state.zones.push(z);
+                if (rawNames && rawNames[i]) state.labels[z] = sanitizeLabel(rawNames[i]);
+            });
+        }
+
         function applyQuery(query) {
             const params = new URLSearchParams(query);
             const zones = params.get('zones');
             if (zones === null) return false;
-            state.zones = zones.split(',').filter(z => z && isValidZone(z));
-            if (params.get('date')) state.date = params.get('date');
+            applyZoneList(zones.split(','), (params.get('names') || '').split('|'));
+            const date = params.get('date');
+            if (isValidDateStr(date)) state.date = date;
             const t = parseInt(params.get('t'), 10);
-            if (t >= 0 && t < HOURS) state.selHour = t;
+            if (t >= 0 && t < MAX_COLS) state.selCol = t;
             applyWorkWindow(params.get('w'));
             return true;
         }
@@ -910,10 +1185,11 @@
             let data;
             try { data = JSON.parse(raw); } catch (e) { return false; }
             if (!data || !Array.isArray(data.zones)) return false;
-            state.zones = data.zones.filter(isValidZone);
             state.labels = data.labels && typeof data.labels === 'object' ? data.labels : {};
-            if (data.date) state.date = data.date;
-            if (data.selHour >= 0 && data.selHour < HOURS) state.selHour = data.selHour;
+            applyZoneList(data.zones, null);
+            if (isValidDateStr(data.date)) state.date = data.date;
+            const col = data.selCol !== undefined ? data.selCol : data.selHour;
+            if (col >= 0 && col < MAX_COLS) state.selCol = col;
             applyWorkWindow(data.workStart + '-' + data.workEnd);
             return true;
         }
@@ -928,17 +1204,21 @@
         }
 
         function loadState() {
-            const stored = localStorage.getItem(STORAGE_KEY);
+            let stored = null;
+            try { stored = localStorage.getItem(STORAGE_KEY); } catch (e) { /* private mode */ }
             const fromUrl = window.location.search.length > 1 && applyQuery(window.location.search);
 
             if (fromUrl) {
-                // Keep any custom names the user picked in a previous session.
+                // Fall back to names from a previous session for any zone the
+                // link did not name itself.
                 if (stored) {
                     try {
                         const data = JSON.parse(stored);
                         if (data && data.labels) {
                             state.zones.forEach(z => {
-                                if (data.labels[z]) state.labels[z] = data.labels[z];
+                                if (!state.labels[z] && data.labels[z]) {
+                                    state.labels[z] = sanitizeLabel(data.labels[z]);
+                                }
                             });
                         }
                     } catch (e) { /* ignore malformed cache */ }
@@ -958,11 +1238,9 @@
         function populateHourSelects() {
             const start = document.getElementById('work-start');
             const end = document.getElementById('work-end');
-            for (let h = 0; h <= 24; h++) {
-                const label = pad2(h) + ':00';
-                start.appendChild(new Option(label, h));
-                end.appendChild(new Option(label, h));
-            }
+            // 24:00 is only meaningful as an end; 00:00 only as a start.
+            for (let h = 0; h <= 23; h++) start.appendChild(new Option(pad2(h) + ':00', h));
+            for (let h = 1; h <= 24; h++) end.appendChild(new Option(pad2(h) + ':00', h));
         }
 
         function showStatus(message, type) {
@@ -985,16 +1263,18 @@
         }
 
         function resetTool() {
-            localStorage.removeItem(STORAGE_KEY);
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) { /* private mode */ }
             state.zones = [localZone()];
             state.labels = {};
             state.date = todayLocalDate();
             state.workStart = 9;
             state.workEnd = 17;
-            state.selHour = 9;
+            state.selCol = 9;
+            document.getElementById('zone-search').value = '';
+            document.getElementById('suggestions').innerHTML = '';
             syncControls();
             persist();
-            render();
+            safeRender();
             showStatus('Reset to your local timezone', 'info');
         }
 
@@ -1004,27 +1284,46 @@
             document.getElementById('work-end').value = state.workEnd;
         }
 
+        // A bad stored value must never take the whole tool down: without this,
+        // one unparseable date throws mid-init and every listener below is
+        // never attached, leaving controls that look fine but do nothing.
+        function safeRender() {
+            try {
+                render();
+            } catch (err) {
+                const planner = document.getElementById('planner');
+                planner.innerHTML = '';
+                const hint = document.createElement('div');
+                hint.className = 'empty-hint';
+                hint.textContent = 'Could not draw the planner for these settings. Press Reset to start again.';
+                planner.appendChild(hint);
+                showStatus('Something went wrong: ' + err.message, 'error');
+            }
+        }
+
         function init() {
             populateHourSelects();
             loadState();
             syncControls();
-            render();
+            safeRender();
 
             document.getElementById('date').addEventListener('change', e => {
-                state.date = e.target.value || todayLocalDate();
+                state.date = isValidDateStr(e.target.value) ? e.target.value : todayLocalDate();
+                syncControls();
                 persist();
-                render();
+                safeRender();
             });
 
             document.getElementById('work-start').addEventListener('change', e => {
                 const v = Number(e.target.value);
-                if (v < state.workEnd) { state.workStart = v; persist(); render(); }
+                // s > e is a legitimate overnight window (22:00–06:00).
+                if (v !== state.workEnd) { state.workStart = v; persist(); safeRender(); }
                 else { e.target.value = state.workStart; }
             });
 
             document.getElementById('work-end').addEventListener('change', e => {
                 const v = Number(e.target.value);
-                if (v > state.workStart) { state.workEnd = v; persist(); render(); }
+                if (v !== state.workStart) { state.workEnd = v; persist(); safeRender(); }
                 else { e.target.value = state.workEnd; }
             });
 
@@ -1055,6 +1354,17 @@
             search.addEventListener('blur', () => {
                 setTimeout(() => { document.getElementById('suggestions').innerHTML = ''; }, 150);
             });
+
+            // Keep the "right now" marker on the correct column as time passes.
+            setInterval(() => {
+                const grid = document.querySelector('.planner-grid');
+                if (!grid) return;
+                const col = nowColumn();
+                grid.querySelectorAll('.now-col').forEach(el => el.classList.remove('now-col'));
+                if (col >= 0) {
+                    grid.querySelectorAll('[data-col="' + col + '"]').forEach(el => el.classList.add('now-col'));
+                }
+            }, 60000);
         }
 
         init();
