@@ -155,7 +155,9 @@
         .field-row {
             display: flex;
             gap: 0.5rem;
-            align-items: center;
+            /* Bottom-align so the Copy button lines up with the inputs, not the
+               centre of the channel columns (which include the R/G/B labels). */
+            align-items: flex-end;
         }
         input[type="text"],
         input[type="number"] {
