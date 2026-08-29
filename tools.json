@@ -107,10 +107,10 @@
     {
       "slug": "color-picker",
       "name": "Color Picker",
-      "description": "Pick colors visually, convert between hex, RGB, and HSL, and sample any color on screen with the eyedropper. Shareable via URL.",
+      "description": "Pick colors visually, convert between hex, RGB, and HSL, and sample colors from your screen or an image. Shareable via URL.",
       "category": "image",
       "created": "2026-07-01",
-      "updated": "2026-07-01"
+      "updated": "2026-08-09"
     },
     {
       "slug": "timezone-comparison",
