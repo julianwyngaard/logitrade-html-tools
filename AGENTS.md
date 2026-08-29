@@ -99,5 +99,4 @@ Serve on 3737 and open the tool. Check, at ~1200px and ~600px wide:
 
 - Branches: `feature/[slug]` for new tools, `fix/[topic]` for fixes. Every change lands via a GitHub PR to `main`.
 - Commit subjects: imperative, sentence case, no prefixes — `Add Colour Picker tool`, `Fix DST handling in Timezone Comparison`. Body: a short paragraph on why, then a bullet list of what changed.
-- Claude-authored commits end with the `Co-Authored-By: Claude … <noreply@anthropic.com>` trailer.
 - Keep the working tree free of build-unrelated binaries; reference images from the PR, not the repo.
