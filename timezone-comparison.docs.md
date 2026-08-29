@@ -24,7 +24,7 @@ Compare working hours across timezones to find a meeting slot that works for eve
 3. Pick the meeting date and your working-hours window
 4. Click any hour in any strip — the selected time updates everywhere, with the exact local time and date per place
 5. Look for the green band in the "Overlap" bar: those hours fall within working hours for everyone
-6. Click **Share link** to copy a URL that reproduces the exact comparison for others
+6. Click **Share URL** to copy a URL that reproduces the exact comparison for others
 
 ## URL Parameters
 
@@ -53,3 +53,5 @@ Compare working hours across timezones to find a meeting slot that works for eve
 ## Updated
 
 2026-08-09 - DST-correct column model, crash fixes, accessibility and mobile improvements
+
+2026-08-29 - Adopt shared tools.css and standard toolbar/status conventions

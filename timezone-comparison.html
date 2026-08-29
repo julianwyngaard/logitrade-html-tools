@@ -4,13 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Timezone Comparison - tools.julianwyngaard.dev</title>
+    <link rel="stylesheet" href="tools.css">
     <style>
+        /* Tool-specific styles only. Tokens, base type, buttons, form controls,
+           focus rings, status and footer all come from tools.css. */
         :root {
-            --primary: #0066cc;
-            --primary-dark: #0055aa;
-            --ink: #1f2733;
-            --muted: #6b7686;
-            --line: #e6e9ee;
             --label-w: 190px;
             --work-bg: #e2f2e6;
             --work-ink: #2b7a45;
@@ -22,80 +20,41 @@
             --sel-bg: #e1efff;
             --now: #e8590c;
         }
-        * { box-sizing: border-box; }
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 1rem;
-            line-height: 1.6;
-            color: var(--ink);
-        }
-        h1 { margin-bottom: 0.25rem; font-size: 1.9rem; letter-spacing: -0.02em; }
-        .lede { color: var(--muted); margin-top: 0; }
-        .back-link {
-            display: inline-block;
-            margin-bottom: 1rem;
-            color: var(--primary);
-            text-decoration: none;
-            font-size: 0.9rem;
-        }
-        .back-link:hover { text-decoration: underline; }
 
+        /* The panel around the controls. The fields themselves are a .field-row,
+           so tools.css lays them out and stacks them at the breakpoint. Not a
+           .card: .card clips with overflow:hidden, which would cut off the
+           suggestions dropdown. */
         .controls {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: flex-end;
-            gap: 1rem 1.25rem;
             margin: 1rem 0;
             padding: 0.9rem 1rem;
-            background: #f7f8fa;
+            background: var(--surface-alt);
             border: 1px solid var(--line);
-            border-radius: 10px;
+            border-radius: var(--radius);
         }
-        .field { display: flex; flex-direction: column; gap: 0.3rem; }
-        .field label {
-            font-size: 0.72rem;
-            font-weight: 700;
-            letter-spacing: 0.04em;
-            text-transform: uppercase;
-            color: var(--muted);
-        }
-        input[type="date"], input[type="text"], select {
-            padding: 0.5rem 0.6rem;
-            font-size: 0.95rem;
-            border: 1px solid #ccd2da;
-            border-radius: 7px;
-            font-family: inherit;
-            color: var(--ink);
-            background: #fff;
-        }
-        input:focus, select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(0,102,204,0.12);
-        }
-        .work-hours { display: flex; align-items: center; gap: 0.4rem; }
-        .work-hours span { color: var(--muted); font-size: 0.85rem; }
 
-        .search-wrap { position: relative; flex: 1; min-width: 220px; }
+        .work-hours { display: flex; align-items: center; gap: 0.4rem; }
+        .work-hours span { font-size: 0.85rem; color: var(--muted); }
+
+        .search-wrap { position: relative; flex: 1; min-width: 14rem; }
         .search-wrap input { width: 100%; }
         .suggestions {
             list-style: none;
-            margin: 0;
+            margin: 0.25rem 0 0;
             padding: 0;
             position: absolute;
             top: 100%;
             left: 0;
             right: 0;
             z-index: 10;
-            margin-top: 4px;
-            background: #fff;
-            border: 1px solid #ccd2da;
-            border-radius: 8px;
-            max-height: 280px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            max-height: 17rem;
             overflow-y: auto;
-            box-shadow: 0 8px 24px rgba(20,30,50,0.14);
+            /* The one shadow in the repo: a floating dropdown needs to lift off
+               the grid behind it. */
+            box-shadow: 0 0.5rem 1.5rem rgba(20, 30, 50, 0.14);
         }
         .suggestions:empty { display: none; }
         .suggestions li {
@@ -107,29 +66,14 @@
             align-items: center;
             gap: 0.5rem;
         }
-        .suggestions li + li { border-top: 1px solid #f2f4f7; }
-        .suggestions li:hover, .suggestions li.active { background: #eef6ff; }
+        .suggestions li + li { border-top: 1px solid var(--line); }
+        .suggestions li:hover, .suggestions li.active { background: var(--surface-hover); }
         .suggestions li .sub {
             color: var(--muted);
             font-size: 0.72rem;
             white-space: nowrap;
             font-variant-numeric: tabular-nums;
         }
-
-        .buttons { display: flex; gap: 0.5rem; flex-wrap: wrap; margin: 1.25rem 0 0.5rem; }
-        button {
-            padding: 0.5rem 1rem;
-            font-size: 0.95rem;
-            cursor: pointer;
-            border: 1px solid #ccd2da;
-            border-radius: 7px;
-            background: #fff;
-            color: var(--ink);
-            transition: background 0.12s, border-color 0.12s;
-        }
-        button:hover { background: #f0f2f5; }
-        button.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
-        button.primary:hover { background: var(--primary-dark); }
 
         .selected-banner {
             display: flex;
@@ -138,11 +82,10 @@
             gap: 0.15rem 0.6rem;
             margin: 0.75rem 0 1rem;
             padding: 0.7rem 1rem;
-            background: linear-gradient(180deg, #f0f7ff, #e8f2ff);
-            border: 1px solid #cfe3fb;
-            border-radius: 10px;
+            background: var(--info-bg);
+            border-radius: var(--radius);
             font-size: 0.95rem;
-            color: #0a4a8f;
+            color: var(--info-ink);
         }
         .selected-banner .big {
             font-size: 1.5rem;
@@ -151,7 +94,7 @@
             letter-spacing: -0.01em;
             font-variant-numeric: tabular-nums;
         }
-        .selected-banner .where { color: #37618c; }
+        .selected-banner .where { opacity: 0.8; }
 
         .planner-scroll {
             overflow-x: auto;
@@ -164,13 +107,14 @@
                23, 24 or 25 hours long depending on daylight saving, so the column
                count cannot be hard-coded here. */
             border: 1px solid var(--line);
-            border-radius: 10px;
-            background: #fff;
+            border-radius: var(--radius);
+            background: var(--surface);
         }
 
         /* The label column stays put while the hour strip scrolls sideways.
            Note: .planner-grid must NOT have overflow:hidden, or it becomes the
-           scrollport and sticky silently stops working. */
+           scrollport and sticky silently stops working. Corner cells therefore
+           carry their own radius, one border inside the grid's own. */
         .corner, .row-label {
             position: sticky;
             left: 0;
@@ -180,8 +124,8 @@
         .corner {
             border-right: 2px solid var(--line);
             border-bottom: 1px solid var(--line);
-            background: #fbfcfd;
-            border-top-left-radius: 9px;
+            background: var(--surface-alt);
+            border-top-left-radius: calc(var(--radius) - 1px);
             display: flex;
             align-items: center;
             padding: 0 0.7rem;
@@ -193,14 +137,15 @@
         }
         .overlap-cell {
             border-bottom: 1px solid var(--line);
-            border-right: 1px solid #f3f5f7;
+            border-right: 1px solid var(--line);
             cursor: pointer;
-            height: 16px;
+            height: 1rem;
         }
         .overlap-cell.good { background: var(--good); }
         .overlap-cell.sel { box-shadow: inset 1px 0 0 var(--primary), inset -1px 0 0 var(--primary); }
-        .overlap-cell.daybreak { border-left: 1px solid #d8dde4; }
-        .overlap-cell.last-col { border-top-right-radius: 9px; border-right: none; }
+        .overlap-cell.daybreak { border-left: 1px solid var(--border); }
+        .overlap-cell.last-col { border-top-right-radius: calc(var(--radius) - 1px); border-right: none; }
+        /* Cells sit edge to edge, so the shared ring is drawn inside the cell. */
         .overlap-cell:focus-visible {
             outline: 2px solid var(--primary);
             outline-offset: -2px;
@@ -214,7 +159,7 @@
             padding: 0.55rem 0.7rem;
             border-right: 2px solid var(--line);
             border-bottom: 1px solid var(--line);
-            background: #fbfcfd;
+            background: var(--surface-alt);
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -224,8 +169,8 @@
            selected the final .row-label (every grid child is a div). */
         .planner-grid > .row-label.last-row,
         .planner-grid > .cell.last-row { border-bottom: none; }
-        .row-label.last-row { border-bottom-left-radius: 9px; }
-        .cell.last-cell { border-bottom-right-radius: 9px; }
+        .row-label.last-row { border-bottom-left-radius: calc(var(--radius) - 1px); }
+        .cell.last-cell { border-bottom-right-radius: calc(var(--radius) - 1px); }
         .row-label .city {
             font-weight: 650;
             font-size: 0.92rem;
@@ -250,9 +195,9 @@
         .row-label .offset {
             display: inline-block;
             padding: 0.05rem 0.4rem;
-            border-radius: 999px;
-            background: #eef1f5;
-            color: #5a6474;
+            border-radius: var(--radius-pill);
+            background: var(--surface-hover);
+            color: var(--muted);
             font-size: 0.68rem;
             font-weight: 600;
             font-variant-numeric: tabular-nums;
@@ -261,23 +206,23 @@
         }
         .row-label .daychip {
             padding: 0.02rem 0.35rem;
-            border-radius: 999px;
+            border-radius: var(--radius-pill);
             font-size: 0.66rem;
             font-weight: 700;
-            background: #fff2e0;
-            color: #b25e00;
+            background: var(--warn-bg);
+            color: var(--warn-ink);
         }
         .row-label .remove {
             position: absolute;
             top: 0.35rem;
             right: 0.4rem;
-            width: 20px;
-            height: 20px;
+            width: 1.25rem;
+            height: 1.25rem;
             padding: 0;
-            border-radius: 5px;
+            border-radius: var(--radius);
             border: none;
             background: transparent;
-            color: #b6bdc7;
+            color: var(--border);
             font-size: 0.95rem;
             line-height: 1;
             cursor: pointer;
@@ -287,31 +232,31 @@
         .row-label:hover .remove,
         .row-label:focus-within .remove,
         .row-label .remove:focus-visible { opacity: 1; }
-        .row-label .remove:hover { background: #fdecee; color: #c0392b; }
-        .row-label .remove:focus-visible { outline: 2px solid var(--primary); }
+        .row-label .remove:hover { background: var(--err-bg); color: var(--err-ink); }
         /* Touch devices have no hover, so the control must always be visible —
            otherwise zones can never be removed on a phone. */
         @media (hover: none) {
-            .row-label .remove { opacity: 1; color: #8a929e; }
+            .row-label .remove { opacity: 1; color: var(--muted); }
         }
 
         .cell {
             border-bottom: 1px solid var(--line);
-            border-right: 1px solid #f3f5f7;
+            border-right: 1px solid var(--line);
             text-align: center;
             font-size: 0.7rem;
             padding: 0.6rem 0;
             cursor: pointer;
-            color: #7a828f;
+            color: var(--muted);
             font-variant-numeric: tabular-nums;
             user-select: none;
-            transition: background 0.1s;
+            transition: background 0.12s;
         }
         .cell.day { background: var(--doable-bg); color: var(--doable-ink); }
         .cell.work { background: var(--work-bg); color: var(--work-ink); font-weight: 600; }
         .cell.night { background: var(--night-bg); color: var(--night-ink); }
-        .cell.daybreak { border-left: 1px solid #d8dde4; }
-        .cell.hover:not(.sel) { background: rgba(0,102,204,0.07); }
+        .cell.daybreak { border-left: 1px solid var(--border); }
+        /* A wash of the primary, so the hover preview reads over any shading. */
+        .cell.hover:not(.sel) { background: rgba(0, 102, 204, 0.07); }
         .cell.half { font-size: 0.62rem; }
         .cell .abbr {
             display: block;
@@ -338,50 +283,38 @@
             color: var(--muted);
         }
         .legend span { display: inline-flex; align-items: center; gap: 0.4rem; }
-        .swatch { width: 13px; height: 13px; border-radius: 3px; border: 1px solid rgba(0,0,0,0.08); }
+        .swatch {
+            width: 0.8rem;
+            height: 0.8rem;
+            border-radius: calc(var(--radius) / 2);
+            border: 1px solid var(--line);
+        }
         .swatch.work { background: var(--work-bg); }
         .swatch.doable { background: var(--doable-bg); }
         .swatch.night { background: var(--night-bg); }
         .swatch.good { background: var(--good); border-color: var(--good); }
         .swatch.sel { background: var(--sel-bg); box-shadow: inset 0 0 0 1.5px var(--primary); }
-        .swatch.now { background: #fff; border-left: 3px solid var(--now); border-radius: 0; width: 8px; }
+        .swatch.now { background: var(--surface); border-left: 3px solid var(--now); border-radius: 0; width: 0.5rem; }
 
         .no-overlap {
             margin: 0.6rem 0 0;
             padding: 0.5rem 0.75rem;
-            border-radius: 7px;
-            background: #fdf3e3;
-            color: #8a5a12;
+            border-radius: var(--radius);
+            background: var(--warn-bg);
+            color: var(--warn-ink);
             font-size: 0.85rem;
         }
         .empty-hint {
             color: var(--muted);
             padding: 1.5rem 1rem;
             text-align: center;
-            border: 1px dashed #d3d8df;
-            border-radius: 10px;
-            background: #fbfcfd;
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            background: var(--surface-alt);
         }
 
-        .status { margin-top: 0.75rem; padding: 0.5rem 0.75rem; border-radius: 7px; font-size: 0.9rem; }
-        .status.success { background: #e5f6ea; color: #1f7a3d; }
-        .status.error { background: #fdecec; color: #c0392b; }
-        .status.info { background: #eaf3ff; color: #0a4a8f; }
-        .status:empty { display: none; }
-
-        footer {
-            margin-top: 2.25rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--line);
-            color: var(--muted);
-            font-size: 0.88rem;
-        }
-        footer a { color: var(--primary); }
-
-        @media (max-width: 600px) {
+        @media (max-width: 640px) {
             :root { --label-w: 148px; }
-            h1 { font-size: 1.55rem; }
-            .controls { flex-direction: column; align-items: stretch; }
             .search-wrap { min-width: 0; }
             .row-label .now { font-size: 1.15rem; }
         }
@@ -392,7 +325,12 @@
     <h1>Timezone Comparison</h1>
     <p class="lede">Line up working hours across places to find a meeting slot. Click any hour to see that moment everywhere at once.</p>
 
-    <div class="controls">
+    <div class="buttons">
+        <button id="share" class="primary">Share URL</button>
+        <button id="reset">Reset</button>
+    </div>
+
+    <div class="controls field-row">
         <div class="field">
             <label for="date">Meeting date</label>
             <input type="date" id="date">
@@ -425,11 +363,6 @@
         <span><span class="swatch now"></span> Right now</span>
     </div>
 
-    <div class="buttons">
-        <button class="primary" onclick="shareURL()">Share link</button>
-        <button onclick="resetTool()">Reset</button>
-    </div>
-
     <div id="status" class="status" role="status" aria-live="polite"></div>
 
     <footer>
@@ -438,6 +371,9 @@
     </footer>
 
     <script>
+        // ABOUTME: Side-by-side hour strips for several timezones, so a meeting slot that suits
+        // ABOUTME: everyone is visible at a glance; all conversion is done with Intl, DST included.
+
         // ---- Time zone conversion (pure, DST-aware via Intl) ----
 
         function localPartsAt(instant, timeZone) {
@@ -1243,12 +1179,19 @@
             for (let h = 1; h <= 24; h++) end.appendChild(new Option(pad2(h) + ':00', h));
         }
 
+        const statusEl = document.getElementById('status');
+        let statusTimer = null;
+
         function showStatus(message, type) {
-            const status = document.getElementById('status');
-            status.textContent = message;
-            status.className = 'status ' + type;
+            clearTimeout(statusTimer);
+            statusEl.textContent = message;
+            statusEl.className = 'status ' + (type || 'info');
+            // Errors stay up; everything else clears itself.
             if (type !== 'error') {
-                setTimeout(() => { status.textContent = ''; status.className = 'status'; }, 3000);
+                statusTimer = setTimeout(() => {
+                    statusEl.textContent = '';
+                    statusEl.className = 'status';
+                }, 3000);
             }
         }
 
@@ -1256,9 +1199,9 @@
             persist();
             const url = window.location.origin + window.location.pathname + window.location.search;
             navigator.clipboard.writeText(url).then(() => {
-                showStatus('Share link copied to clipboard', 'success');
+                showStatus('URL copied to clipboard', 'success');
             }).catch(() => {
-                showStatus('Link is in the address bar — copy it from there', 'info');
+                showStatus('URL updated — copy from address bar', 'info');
             });
         }
 
@@ -1306,6 +1249,9 @@
             loadState();
             syncControls();
             safeRender();
+
+            document.getElementById('share').addEventListener('click', shareURL);
+            document.getElementById('reset').addEventListener('click', resetTool);
 
             document.getElementById('date').addEventListener('change', e => {
                 state.date = isValidDateStr(e.target.value) ? e.target.value : todayLocalDate();
