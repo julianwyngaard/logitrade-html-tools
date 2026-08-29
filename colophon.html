@@ -4,97 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Colophon - tools.julianwyngaard.dev</title>
-    <style>
-        * { box-sizing: border-box; }
-        body {
-            font-family: system-ui, -apple-system, sans-serif;
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-            line-height: 1.6;
-            color: #333;
-        }
-        h1 {
-            border-bottom: 2px solid #eee;
-            padding-bottom: 0.5rem;
-        }
-        .intro {
-            color: #666;
-            margin-bottom: 2rem;
-        }
-        .tool {
-            margin: 2rem 0;
-            padding: 1.5rem;
-            background: #f9f9f9;
-            border-radius: 8px;
-        }
-        .tool h3 {
-            margin: 0 0 0.5rem 0;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .tool h3 a:first-child {
-            color: #0066cc;
-            text-decoration: none;
-        }
-        .tool h3 a:first-child:hover {
-            text-decoration: underline;
-        }
-        .hashref {
-            color: #ccc;
-            text-decoration: none;
-            font-weight: normal;
-        }
-        .hashref:hover {
-            color: #0066cc;
-        }
-        .tool p {
-            margin: 0.5rem 0;
-        }
-        .meta {
-            font-size: 0.85rem;
-            color: #888;
-        }
-        .history {
-            margin-top: 1rem;
-        }
-        .history summary {
-            cursor: pointer;
-            color: #666;
-            font-size: 0.9rem;
-        }
-        .history ul {
-            margin: 0.5rem 0;
-            padding-left: 1.5rem;
-            font-size: 0.85rem;
-        }
-        .history code {
-            background: #e9e9e9;
-            padding: 0.1rem 0.3rem;
-            border-radius: 3px;
-            font-size: 0.8rem;
-        }
-        footer {
-            margin-top: 3rem;
-            padding-top: 1rem;
-            border-top: 1px solid #eee;
-            color: #666;
-            font-size: 0.9rem;
-        }
-        footer a {
-            color: #0066cc;
-        }
-    </style>
+    <link rel="stylesheet" href="tools.css">
 </head>
 <body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
     <h1>Colophon</h1>
-    <p class="intro">
+    <p class="lede">
         Documentation and history for each tool in this collection.
         These tools are built as single-file HTML applications, often with AI assistance.
     </p>
 
-    <p><a href="index.html">&larr; Back to all tools</a></p>
 
         <div class="tool" id="json-formatter">
             <h3>
@@ -267,8 +186,9 @@
             <p class="meta">Created: 2026-03-25</p>
             <div class="history">
                 <details>
-                    <summary>Commit history (3)</summary>
+                    <summary>Commit history (4)</summary>
                     <ul>
+                        <li><code>090ec0c</code> 2026-08-29 - Add shared tools.css and style guide</li>
                         <li><code>c1eb5e5</code> 2026-03-25 - Match JSON Formatter styling: max-width, centered layout, mobile textarea heights</li>
                         <li><code>8c805a9</code> 2026-03-25 - Improve layout: stack JSON-to-YAML outputs, inline pretty toggle, add AGENTS.md</li>
                         <li><code>62d00d1</code> 2026-03-25 - Add JSON to YAML converter tool</li>
@@ -341,9 +261,8 @@
             <p class="meta">Created: 2026-07-01 | Updated: 2026-08-09</p>
             <div class="history">
                 <details>
-                    <summary>Commit history (2)</summary>
+                    <summary>Commit history (1)</summary>
                     <ul>
-                        <li><code>c9adf5f</code> 2026-08-09 - Color picker: image eyedropper, keyboard a11y, and four bug fixes</li>
                         <li><code>58eabf7</code> 2026-07-01 - Add Color Picker tool</li>
                     </ul>
                 </details>
@@ -356,11 +275,12 @@
                 <a href="#timezone-comparison" class="hashref">#</a>
             </h3>
             <p>Compare working hours across timezones to find a meeting slot that works for everyone. Everything runs client-side — no server, no tracking.</p>
-            <p class="meta">Created: 2026-07-01 | Updated: 2026-08-09</p>
+            <p class="meta">Created: 2026-07-01 | Updated: 2026-08-29</p>
             <div class="history">
                 <details>
-                    <summary>Commit history (4)</summary>
+                    <summary>Commit history (5)</summary>
                     <ul>
+                        <li><code>84c6a61</code> 2026-08-29 - Apply shared styles to Timezone Comparison</li>
                         <li><code>8b53049</code> 2026-08-09 - Fix DST correctness and two crashes in the timezone tool</li>
                         <li><code>d5aee4a</code> 2026-07-01 - Timezone tool: amber 'doable' hours and flicker-free selection</li>
                         <li><code>62e4406</code> 2026-07-01 - Improve timezone tool: city search, visual polish</li>
