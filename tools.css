@@ -1,0 +1,545 @@
+/* ABOUTME: Shared stylesheet for every page on tools.julianwyngaard.dev — design tokens,
+   ABOUTME: base typography, and the common components (buttons, fields, cards, status, tables). */
+
+/* ---- Tokens ---- */
+/* Light mode only for now. Every colour, radius and font in the repo comes from
+   here; tools must not redefine these, only consume them. */
+:root {
+    --primary: #0066cc;
+    --primary-dark: #0055aa;
+
+    --ink: #1f2733;
+    --muted: #6b7686;
+
+    --line: #e6e9ee;          /* hairlines: rules, card and table borders */
+    --border: #ccd2da;        /* control borders: inputs, selects, buttons */
+
+    --surface: #fff;
+    --surface-alt: #f7f8fa;   /* card headers, code blocks, list cards */
+    --surface-hover: #eef1f5; /* hover state for buttons and rows */
+
+    --ok-bg: #e5f6ea;   --ok-ink: #1f7a3d;
+    --warn-bg: #fbeacf; --warn-ink: #9a6416;
+    --err-bg: #fdecec;  --err-ink: #c0392b;
+    --info-bg: #eaf3ff; --info-ink: #0a4a8f;
+
+    --radius: 6px;
+    --radius-pill: 999px;
+
+    --font: system-ui, -apple-system, sans-serif;
+    --mono: 'SF Mono', SFMono-Regular, Monaco, Consolas, 'Liberation Mono', monospace;
+
+    --focus-ring: 0 0 0 3px rgba(0, 102, 204, 0.28);
+    --max-width: 900px;
+}
+
+/* ---- Base ---- */
+* { box-sizing: border-box; }
+
+body {
+    font-family: var(--font);
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 1rem;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--surface);
+}
+
+h1 {
+    margin: 0 0 0.25rem;
+    font-size: 1.9rem;
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+}
+
+h2 {
+    margin: 2rem 0 0.5rem;
+    font-size: 1.15rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+h3 {
+    margin: 1.5rem 0 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+p { margin: 0 0 1rem; }
+
+a { color: var(--primary); }
+
+hr {
+    border: none;
+    border-top: 1px solid var(--line);
+    margin: 1.5rem 0;
+}
+
+/* ---- Page header ---- */
+.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.back-link:hover { text-decoration: underline; }
+
+/* The one-line subtitle under the h1. Also used for intro copy on index and
+   colophon (formerly .intro there). */
+.lede {
+    margin: 0 0 1rem;
+    color: var(--muted);
+}
+
+/* ---- Buttons ---- */
+/* .buttons is the only toolbar container. .toolbar and .actions are retired. */
+.buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+button {
+    padding: 0.45rem 0.9rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+button:hover { background: var(--surface-hover); }
+
+button.primary {
+    color: #fff;
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+button.primary:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+button.small {
+    padding: 0.2rem 0.55rem;
+    font-size: 0.8rem;
+}
+
+button:disabled,
+button:disabled:hover {
+    opacity: 0.5;
+    cursor: default;
+    background: var(--surface);
+}
+
+button.primary:disabled,
+button.primary:disabled:hover { background: var(--primary); }
+
+/* ---- Segmented toggle ---- */
+/* <div class="segmented"><button class="active">A</button><button>B</button></div>
+   Buttons overlap by 1px so adjacent borders never double up. */
+.segmented { display: inline-flex; }
+
+.segmented button {
+    position: relative;
+    border-radius: 0;
+}
+
+.segmented button + button { margin-left: -1px; }
+
+.segmented button:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.segmented button:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+
+.segmented button:hover,
+.segmented button:focus-visible { z-index: 1; }
+
+.segmented button.active {
+    z-index: 1;
+    color: #fff;
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.segmented button.active:hover {
+    background: var(--primary-dark);
+    border-color: var(--primary-dark);
+}
+
+/* ---- Form controls ---- */
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="url"],
+input[type="email"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+    padding: 0.45rem 0.6rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+textarea {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    padding: 0.6rem 0.7rem;
+    resize: vertical;
+}
+
+select { padding-right: 0.4rem; }
+
+label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+/* A label stacked over its control. */
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin-bottom: 1rem;
+}
+
+/* A row of .field blocks; stacks at the breakpoint. */
+.field-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0.75rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.field-row .field { margin-bottom: 0; }
+
+/* Checkbox and radio rows read as sentences, not as micro-labels. */
+label.inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--ink);
+    cursor: pointer;
+}
+
+/* ---- Focus ---- */
+/* Never remove these without a replacement — they are the only keyboard cue. */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible {
+    outline: none; /* replaced by the ring below */
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* ---- Cards ---- */
+.card {
+    margin-bottom: 1rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    overflow: hidden;
+}
+
+.card-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--line);
+}
+
+.card-header .spacer { flex: 1; }
+
+.card-body { padding: 0.75rem; }
+
+/* ---- Status ---- */
+.status {
+    margin: 0.75rem 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+    border-radius: var(--radius);
+}
+
+.status.success { background: var(--ok-bg); color: var(--ok-ink); }
+.status.error { background: var(--err-bg); color: var(--err-ink); }
+.status.warning { background: var(--warn-bg); color: var(--warn-ink); }
+.status.info { background: var(--info-bg); color: var(--info-ink); }
+.status:empty { display: none; }
+
+/* ---- Chips and badges ---- */
+/* .chip is a clickable pill (recent items, presets). */
+.chip {
+    padding: 0.2rem 0.6rem;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--primary);
+    background: var(--surface-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    transition: background 0.12s;
+}
+
+.chip:hover { background: var(--surface-hover); }
+
+/* .badge is a non-interactive state label. */
+.badge {
+    display: inline-block;
+    padding: 0.05rem 0.45rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius);
+}
+
+.badge.ok { background: var(--ok-bg); color: var(--ok-ink); }
+.badge.err { background: var(--err-bg); color: var(--err-ink); }
+.badge.warn { background: var(--warn-bg); color: var(--warn-ink); }
+.badge.info { background: var(--info-bg); color: var(--info-ink); }
+
+/* ---- Tables ---- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+th,
+td {
+    padding: 0.4rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--line);
+}
+
+th {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+tr:last-child td { border-bottom: none; }
+
+/* ---- Code ---- */
+code {
+    font-family: var(--mono);
+    font-size: 0.85em;
+    padding: 0.1rem 0.35rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+pre {
+    margin: 0 0 1rem;
+    padding: 0.75rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    line-height: 1.5;
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+pre code {
+    padding: 0;
+    font-size: inherit;
+    background: none;
+    border: none;
+}
+
+/* ---- Footer ---- */
+footer {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    font-size: 0.88rem;
+    color: var(--muted);
+    border-top: 1px solid var(--line);
+}
+
+footer a { color: var(--primary); }
+
+/* ---- Site chrome (index.html, colophon.html) ---- */
+.tools-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.tools-list li {
+    margin: 0.75rem 0;
+    padding: 0.9rem 1rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.tools-list a {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.tools-list a:hover { text-decoration: underline; }
+
+.tools-list p {
+    margin: 0.25rem 0 0;
+    font-size: 0.92rem;
+    color: var(--muted);
+}
+
+.tool {
+    margin: 1.5rem 0;
+    padding: 1.25rem;
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+}
+
+.tool h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.35rem;
+    font-size: 1.05rem;
+}
+
+.tool h3 a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.tool h3 a:hover { text-decoration: underline; }
+
+.tool p { margin: 0.35rem 0; }
+
+.tool h3 a.hashref {
+    font-weight: 400;
+    color: var(--border);
+}
+
+.tool h3 a.hashref:hover {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.meta {
+    font-size: 0.85rem;
+    color: var(--muted);
+}
+
+.history { margin-top: 0.75rem; }
+
+.history summary {
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: var(--muted);
+}
+
+.history ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.25rem;
+    font-size: 0.85rem;
+}
+
+.history li { margin: 0.15rem 0; }
+
+.history code { font-size: 0.8rem; }
+
+/* ---- Utilities ---- */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+}
+
+.mono { font-family: var(--mono); }
+
+/* Wrap wide content — tables, grids — so it scrolls instead of stretching the page. */
+.scroll-x {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ---- Responsive: the one breakpoint ---- */
+@media (max-width: 640px) {
+    h1 { font-size: 1.55rem; }
+
+    .field-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .segmented { display: flex; }
+    .segmented button { flex: 1; }
+
+    .tool { padding: 1rem; }
+}
+
+/* ---- Reduced motion ---- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
