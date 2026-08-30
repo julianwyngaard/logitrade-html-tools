@@ -119,6 +119,14 @@
       "category": "misc",
       "created": "2026-07-01",
       "updated": "2026-08-29"
+    },
+    {
+      "slug": "media-metadata-viewer",
+      "name": "Media Metadata Viewer",
+      "description": "Preview photos and videos and inspect file, media, EXIF, and container metadata. Shareable via URL.",
+      "category": "image",
+      "created": "2026-08-30",
+      "updated": "2026-08-30"
     }
   ],
   "categories": {

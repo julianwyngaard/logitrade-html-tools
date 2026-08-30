@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Metadata Viewer - tools.julianwyngaard.dev</title>
+    <link rel="stylesheet" href="tools.css">
+    <style>
+        .media-metadata-viewer .dropzone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            min-height: 8rem;
+            margin-bottom: 1rem;
+            padding: 1.5rem 1rem;
+            color: var(--muted);
+            text-align: center;
+            background: var(--surface-alt);
+            border: 1px dashed var(--border);
+            border-radius: var(--radius);
+            cursor: pointer;
+        }
+        .media-metadata-viewer .dropzone:hover,
+        .media-metadata-viewer .dropzone.dragover {
+            color: var(--info-ink);
+            background: var(--info-bg);
+            border-color: var(--primary);
+        }
+        .media-metadata-viewer .drop-hint {
+            font-size: 0.85rem;
+        }
+        .media-metadata-viewer .url-field {
+            flex: 1;
+            min-width: 12rem;
+        }
+        .media-metadata-viewer .preview-media {
+            display: block;
+            max-width: 100%;
+            max-height: 24rem;
+            margin: 0 auto;
+            border-radius: var(--radius);
+        }
+        .media-metadata-viewer .preview-fallback {
+            color: var(--muted);
+            text-align: center;
+        }
+        .media-metadata-viewer .meta-value {
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            word-break: break-word;
+        }
+        .media-metadata-viewer .section-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            color: var(--muted);
+            background: var(--surface-alt);
+        }
+        @media (max-width: 640px) {
+            .media-metadata-viewer .preview-media { max-height: 16rem; }
+        }
+    </style>
+</head>
+<body class="media-metadata-viewer">
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>Media Metadata Viewer</h1>
+    <p class="lede">Drop a photo or video to preview it and inspect every metadata field the file carries.</p>
+
+    <div class="buttons">
+        <button id="open" class="primary">Open file</button>
+        <button id="share">Share URL</button>
+        <button id="clear">Clear</button>
+    </div>
+
+    <main>
+        <input id="file" class="visually-hidden" type="file" tabindex="-1" accept="image/*,video/*,audio/*,.heic,.heif,.avif,.mov">
+
+        <div id="dropzone" class="dropzone" tabindex="0" role="button">
+            <span id="drop-label">Drop an image or video here, or click to choose a file</span>
+            <span class="drop-hint">You can also paste, or load from a URL below</span>
+        </div>
+
+        <div class="field-row">
+            <div class="field url-field">
+                <label for="url">Media URL</label>
+                <input id="url" type="url" placeholder="https://example.com/photo.jpg" spellcheck="false" autocomplete="off">
+            </div>
+            <button id="load-url">Load</button>
+        </div>
+
+        <div id="preview-card" class="card" hidden>
+            <div class="card-header">
+                <span>Preview</span>
+                <span class="spacer"></span>
+                <span id="kind-badge" class="badge info"></span>
+            </div>
+            <div class="card-body" id="preview"></div>
+        </div>
+
+        <div id="meta-card" class="card" hidden>
+            <div class="card-header">
+                <span>Metadata</span>
+                <span class="spacer"></span>
+                <button id="copy" class="small">Copy</button>
+            </div>
+            <div class="scroll-x">
+                <table>
+                    <thead>
+                        <tr><th>Field</th><th>Value</th></tr>
+                    </thead>
+                    <tbody id="meta-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
+    <script>
+        // ABOUTME: Media metadata viewer that previews photos, video, and audio and lists
+        // ABOUTME: file, media, EXIF, and container metadata; a remote file is shareable via ?url=.
+
+        const STORAGE_KEY = 'media-metadata-viewer-state';
+        const MAX_URL_LENGTH = 1500;
+        const HEAD_READ = 2 * 1024 * 1024;
+        const IMAGE_BRANDS = { heic: 1, heix: 1, hevc: 1, hevx: 1, mif1: 1, msf1: 1, avif: 1, avis: 1 };
+        const ISO_CONTAINERS = { moov: 1, trak: 1, mdia: 1, minf: 1, stbl: 1, udta: 1, edts: 1, moof: 1, traf: 1 };
+
+        const els = {
+            file: document.getElementById('file'),
+            dropzone: document.getElementById('dropzone'),
+            dropLabel: document.getElementById('drop-label'),
+            url: document.getElementById('url'),
+            previewCard: document.getElementById('preview-card'),
+            preview: document.getElementById('preview'),
+            kindBadge: document.getElementById('kind-badge'),
+            metaCard: document.getElementById('meta-card'),
+            metaBody: document.getElementById('meta-body'),
+            status: document.getElementById('status')
+        };
+
+        let statusTimer = null;
+        let objectUrl = null;
+        let currentUrl = null;
+        let copyTextValue = '';
+
+        function showStatus(message, type) {
+            clearTimeout(statusTimer);
+            els.status.textContent = message;
+            els.status.className = 'status ' + (type || 'info');
+            if (type !== 'error') {
+                statusTimer = setTimeout(() => {
+                    els.status.textContent = '';
+                    els.status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        function copyText(text) {
+            if (!text) {
+                showStatus('Nothing to copy', 'info');
+                return;
+            }
+            navigator.clipboard.writeText(text)
+                .then(() => showStatus('Copied to clipboard', 'success'))
+                .catch(() => showStatus('Copy failed — select and copy manually', 'error'));
+        }
+
+        function buildQuery() {
+            const params = new URLSearchParams();
+            if (currentUrl) params.set('url', currentUrl);
+            return params.toString();
+        }
+
+        function shareURL() {
+            const qs = buildQuery();
+            if (!qs) {
+                showStatus('Nothing to share', 'info');
+                return;
+            }
+            if (qs.length > MAX_URL_LENGTH) {
+                showStatus('URL too long to share', 'error');
+                return;
+            }
+            const url = location.origin + location.pathname + '?' + qs;
+            history.replaceState({}, '', '?' + qs);
+            navigator.clipboard.writeText(url)
+                .then(() => showStatus('URL copied to clipboard', 'success'))
+                .catch(() => showStatus('URL updated — copy from address bar', 'info'));
+        }
+
+        function saveState() {
+            try {
+                if (currentUrl) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify({ url: currentUrl }));
+                } else {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+            } catch (e) { /* private browsing, quota */ }
+        }
+
+        function loadState() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function revokeObjectUrl() {
+            if (objectUrl) {
+                URL.revokeObjectURL(objectUrl);
+                objectUrl = null;
+            }
+        }
+
+        function clearAll() {
+            revokeObjectUrl();
+            currentUrl = null;
+            copyTextValue = '';
+            els.file.value = '';
+            els.url.value = '';
+            els.preview.replaceChildren();
+            els.metaBody.replaceChildren();
+            els.previewCard.hidden = true;
+            els.metaCard.hidden = true;
+            els.kindBadge.textContent = '';
+            els.dropLabel.textContent = 'Drop an image or video here, or click to choose a file';
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            history.replaceState({}, '', location.pathname);
+            showStatus('Cleared', 'success');
+        }
+
+        function isValidHttpUrl(value) {
+            if (typeof value !== 'string' || !value || value.length > MAX_URL_LENGTH) return false;
+            try {
+                const parsed = new URL(value);
+                return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+            } catch (e) {
+                return false;
+            }
+        }
+
+        function formatBytes(n) {
+            if (!Number.isFinite(n) || n < 0) return '';
+            if (n < 1024) return n + ' bytes';
+            if (n < 1024 * 1024) return (n / 1024).toFixed(1) + ' KB (' + n + ' bytes)';
+            if (n < 1024 * 1024 * 1024) return (n / (1024 * 1024)).toFixed(1) + ' MB (' + n + ' bytes)';
+            return (n / (1024 * 1024 * 1024)).toFixed(2) + ' GB (' + n + ' bytes)';
+        }
+
+        function formatDuration(seconds) {
+            if (!Number.isFinite(seconds) || seconds < 0) return '';
+            const ms = Math.round(seconds * 1000);
+            const total = Math.floor(ms / 1000);
+            const h = Math.floor(total / 3600);
+            const m = Math.floor((total % 3600) / 60);
+            const s = total % 60;
+            const frac = ms % 1000;
+            const pad = function (n) { return String(n).padStart(2, '0'); };
+            let core = h ? h + ':' + pad(m) + ':' + pad(s) : m + ':' + pad(s);
+            if (frac) core += '.' + String(frac).padStart(3, '0');
+            return core + ' (' + seconds.toFixed(3) + ' s)';
+        }
+
+        function gcd(a, b) {
+            a = Math.abs(Math.round(a));
+            b = Math.abs(Math.round(b));
+            while (b) {
+                const t = b;
+                b = a % b;
+                a = t;
+            }
+            return a || 1;
+        }
+
+        function formatAspect(w, h) {
+            if (!w || !h) return '';
+            const g = gcd(w, h);
+            return w + ' × ' + h + ' (' + (w / g) + ':' + (h / g) + ')';
+        }
+
+        function formatValue(value) {
+            if (value == null) return '';
+            if (typeof value === 'string') return value;
+            if (typeof value === 'number') return String(value);
+            if (typeof value === 'boolean') return value ? 'true' : 'false';
+            if (value instanceof Date) return isNaN(value.getTime()) ? '' : value.toISOString();
+            if (value instanceof Uint8Array || value instanceof ArrayBuffer) {
+                const n = value.byteLength != null ? value.byteLength : value.length;
+                return 'binary (' + n + ' bytes)';
+            }
+            if (Array.isArray(value)) {
+                if (value.length > 32 && value.every(function (x) { return typeof x === 'number'; })) {
+                    return '[' + value.length + ' numbers]';
+                }
+                return value.map(formatValue).join(', ');
+            }
+            if (typeof value === 'object') {
+                try { return JSON.stringify(value); } catch (e) { return String(value); }
+            }
+            return String(value);
+        }
+
+        function ascii(u8, offset, n) {
+            let out = '';
+            for (let i = 0; i < n; i++) {
+                const c = u8[offset + i];
+                out += (c >= 32 && c < 127) ? String.fromCharCode(c) : '';
+            }
+            return out;
+        }
+
+        function decodeLang(packed) {
+            const c1 = ((packed >> 10) & 31) + 0x60;
+            const c2 = ((packed >> 5) & 31) + 0x60;
+            const c3 = (packed & 31) + 0x60;
+            const s = String.fromCharCode(c1, c2, c3);
+            return /^[a-z]{3}$/.test(s) && s !== 'und' ? s : '';
+        }
+
+        function sniffKind(u8) {
+            if (u8.length >= 3 && u8[0] === 0xff && u8[1] === 0xd8 && u8[2] === 0xff) return 'image';
+            if (u8.length >= 8 && u8[0] === 0x89 && ascii(u8, 1, 3) === 'PNG') return 'image';
+            if (u8.length >= 6 && (ascii(u8, 0, 6) === 'GIF87a' || ascii(u8, 0, 6) === 'GIF89a')) return 'image';
+            if (u8.length >= 12 && ascii(u8, 0, 4) === 'RIFF' && ascii(u8, 8, 4) === 'WEBP') return 'image';
+            if (u8.length >= 12 && ascii(u8, 0, 4) === 'RIFF' && ascii(u8, 8, 4) === 'WAVE') return 'audio';
+            if (u8.length >= 12 && ascii(u8, 4, 4) === 'ftyp') {
+                const brand = ascii(u8, 8, 4).replace(/\s+$/, '');
+                return IMAGE_BRANDS[brand] ? 'image' : 'video';
+            }
+            if (u8.length >= 4 && u8[0] === 0x1a && u8[1] === 0x45 && u8[2] === 0xdf && u8[3] === 0xa3) return 'video';
+            if (u8.length >= 3 && ascii(u8, 0, 3) === 'ID3') return 'audio';
+            if (u8.length >= 2 && u8[0] === 0xff && (u8[1] & 0xe0) === 0xe0) return 'audio';
+            if (u8.length >= 5 && ascii(u8, 0, 5) === 'OggS') return 'audio';
+            if (u8.length >= 4 && ascii(u8, 0, 4) === 'fLaC') return 'audio';
+            return '';
+        }
+
+        function detectKind(file, sniffed) {
+            const type = (file.type || '').toLowerCase();
+            const name = (file.name || '').toLowerCase();
+            if (type.startsWith('image/') || /\.(jpe?g|png|gif|webp|avif|bmp|svg|heic|heif|tiff?)$/.test(name)) return 'image';
+            if (type.startsWith('video/') || /\.(mp4|webm|ogv|mov|m4v|mkv|avi)$/.test(name)) return 'video';
+            if (type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac|flac|oga|opus)$/.test(name)) return 'audio';
+            return sniffed || 'file';
+        }
+
+        function parsePng(buffer) {
+            const u8 = new Uint8Array(buffer);
+            if (u8.length < 24 || u8[0] !== 0x89 || ascii(u8, 1, 3) !== 'PNG') return null;
+            const view = new DataView(buffer);
+            const colorTypes = { 0: 'grayscale', 2: 'RGB', 3: 'palette', 4: 'grayscale+alpha', 6: 'RGBA' };
+            const rows = [];
+            let offset = 8;
+            while (offset + 12 <= u8.length) {
+                const len = view.getUint32(offset);
+                const type = ascii(u8, offset + 4, 4);
+                const data = offset + 8;
+                if (data + len + 4 > u8.length) break;
+                if (type === 'IHDR' && len >= 13) {
+                    rows.push(['PNG bit depth', String(u8[data + 8])]);
+                    rows.push(['PNG color type', colorTypes[u8[data + 9]] || String(u8[data + 9])]);
+                    rows.push(['PNG interlace', u8[data + 12] ? 'Adam7' : 'none']);
+                } else if (type === 'tEXt') {
+                    const bytes = u8.subarray(data, data + len);
+                    let z = -1;
+                    for (let i = 0; i < bytes.length; i++) { if (bytes[i] === 0) { z = i; break; } }
+                    if (z > 0) {
+                        const key = new TextDecoder('latin1').decode(bytes.subarray(0, z));
+                        const val = new TextDecoder('latin1').decode(bytes.subarray(z + 1));
+                        rows.push(['PNG text: ' + key, val]);
+                    }
+                } else if (type === 'pHYs' && len >= 9) {
+                    const x = view.getUint32(data);
+                    const y = view.getUint32(data + 4);
+                    if (u8[data + 8] === 1) {
+                        rows.push(['Pixels per metre', x + ' × ' + y]);
+                        rows.push(['DPI', Math.round(x * 0.0254) + ' × ' + Math.round(y * 0.0254)]);
+                    }
+                } else if (type === 'IEND') break;
+                offset = data + len + 4;
+            }
+            return rows.length ? rows : null;
+        }
+
+        function parseWav(buffer) {
+            const u8 = new Uint8Array(buffer);
+            if (u8.length < 44 || ascii(u8, 0, 4) !== 'RIFF' || ascii(u8, 8, 4) !== 'WAVE') return null;
+            const view = new DataView(buffer);
+            const rows = [];
+            let offset = 12;
+            while (offset + 8 <= u8.length) {
+                const id = ascii(u8, offset, 4);
+                const size = view.getUint32(offset + 4, true);
+                const data = offset + 8;
+                if (id === 'fmt ' && size >= 16 && data + 16 <= u8.length) {
+                    const fmt = view.getUint16(data, true);
+                    rows.push(['WAV format', fmt === 1 ? 'PCM' : String(fmt)]);
+                    rows.push(['Channels', String(view.getUint16(data + 2, true))]);
+                    rows.push(['Sample rate', view.getUint32(data + 4, true) + ' Hz']);
+                    rows.push(['Byte rate', view.getUint32(data + 8, true) + ' bytes/s']);
+                    rows.push(['Bits per sample', String(view.getUint16(data + 14, true))]);
+                }
+                offset = data + size + (size % 2);
+            }
+            return rows.length ? rows : null;
+        }
+
+        function parseIsoBmff(buffer) {
+            const view = new DataView(buffer);
+            const u8 = new Uint8Array(buffer);
+            if (buffer.byteLength < 16) return null;
+            const result = { tracks: [] };
+            let currentTrack = null;
+
+            function walk(start, end) {
+                let offset = start;
+                while (offset + 8 <= end) {
+                    let size = view.getUint32(offset);
+                    const type = ascii(u8, offset + 4, 4);
+                    let hdr = 8;
+                    if (size === 1) {
+                        if (offset + 16 > end) break;
+                        size = view.getUint32(offset + 8) * 0x100000000 + view.getUint32(offset + 12);
+                        hdr = 16;
+                    } else if (size === 0) {
+                        size = end - offset;
+                    }
+                    if (size < hdr || offset + size > end) break;
+                    handle(type, offset + hdr, offset + size);
+                    offset += size;
+                }
+            }
+
+            function handle(type, ds, de) {
+                if (type === 'ftyp' && de - ds >= 8) {
+                    result.major = ascii(u8, ds, 4).replace(/\s+$/, '');
+                    result.minor = view.getUint32(ds + 4);
+                    const brands = [];
+                    for (let i = ds + 8; i + 4 <= de; i += 4) {
+                        const b = ascii(u8, i, 4).replace(/\s+$/, '');
+                        if (b) brands.push(b);
+                    }
+                    result.brands = brands;
+                } else if (type === 'mvhd') {
+                    const ver = u8[ds];
+                    if (ver === 1 && de - ds >= 32) {
+                        result.timescale = view.getUint32(ds + 20);
+                        result.duration = view.getUint32(ds + 24) * 0x100000000 + view.getUint32(ds + 28);
+                    } else if (de - ds >= 20) {
+                        result.timescale = view.getUint32(ds + 12);
+                        result.duration = view.getUint32(ds + 16);
+                    }
+                } else if (type === 'trak') {
+                    currentTrack = {};
+                    result.tracks.push(currentTrack);
+                    walk(ds, de);
+                    currentTrack = null;
+                } else if (type === 'tkhd' && currentTrack) {
+                    const ver = u8[ds];
+                    const dimOff = ver === 1 ? 88 : 76;
+                    if (ds + dimOff + 8 <= de) {
+                        currentTrack.width = view.getUint32(ds + dimOff) / 65536;
+                        currentTrack.height = view.getUint32(ds + dimOff + 4) / 65536;
+                    }
+                } else if (type === 'mdhd' && currentTrack) {
+                    const ver = u8[ds];
+                    if (ver === 1 && ds + 34 <= de) {
+                        currentTrack.timescale = view.getUint32(ds + 20);
+                        currentTrack.duration = view.getUint32(ds + 24) * 0x100000000 + view.getUint32(ds + 28);
+                        currentTrack.language = decodeLang(view.getUint16(ds + 32));
+                    } else if (ds + 22 <= de) {
+                        currentTrack.timescale = view.getUint32(ds + 12);
+                        currentTrack.duration = view.getUint32(ds + 16);
+                        currentTrack.language = decodeLang(view.getUint16(ds + 20));
+                    }
+                } else if (type === 'hdlr' && currentTrack && ds + 12 <= de) {
+                    currentTrack.handler = ascii(u8, ds + 8, 4);
+                } else if (type === 'stsd' && currentTrack && ds + 16 <= de) {
+                    currentTrack.codec = ascii(u8, ds + 12, 4).replace(/\s+$/, '');
+                } else if (ISO_CONTAINERS[type]) {
+                    walk(ds, de);
+                }
+            }
+
+            walk(0, buffer.byteLength);
+            if (!result.major && !result.tracks.length) return null;
+            return result;
+        }
+
+        function isoRows(parsed) {
+            if (!parsed) return [];
+            const rows = [];
+            const handlerName = { vide: 'video', soun: 'audio', hint: 'hint', meta: 'metadata' };
+            if (parsed.major) rows.push(['ISO major brand', parsed.major]);
+            if (parsed.brands && parsed.brands.length) rows.push(['ISO compatible brands', parsed.brands.join(', ')]);
+            if (parsed.timescale && parsed.duration) {
+                rows.push(['Movie duration', formatDuration(parsed.duration / parsed.timescale)]);
+            }
+            parsed.tracks.forEach(function (track, i) {
+                const n = i + 1;
+                const kind = handlerName[track.handler] || track.handler || 'track';
+                rows.push(['Track ' + n + ' type', kind]);
+                if (track.codec) rows.push(['Track ' + n + ' codec', track.codec]);
+                if (track.width && track.height) rows.push(['Track ' + n + ' size', formatAspect(Math.round(track.width), Math.round(track.height))]);
+                if (track.timescale && track.duration) {
+                    rows.push(['Track ' + n + ' duration', formatDuration(track.duration / track.timescale)]);
+                }
+                if (track.handler === 'soun' && track.timescale) {
+                    rows.push(['Track ' + n + ' sample rate', track.timescale + ' Hz']);
+                }
+                if (track.language) rows.push(['Track ' + n + ' language', track.language]);
+            });
+            return rows;
+        }
+
+        function flattenObject(obj, prefix) {
+            const rows = [];
+            if (!obj || typeof obj !== 'object') return rows;
+            Object.keys(obj).forEach(function (key) {
+                const value = obj[key];
+                const path = prefix ? prefix + '.' + key : key;
+                if (value && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date) && !(value instanceof Uint8Array) && !(value instanceof ArrayBuffer)) {
+                    const nested = flattenObject(value, path);
+                    if (nested.length) rows.push.apply(rows, nested);
+                    else rows.push([path, formatValue(value)]);
+                } else {
+                    rows.push([path, formatValue(value)]);
+                }
+            });
+            return rows;
+        }
+
+        function addSection(sections, title, rows) {
+            if (rows && rows.length) sections.push({ title: title, rows: rows });
+        }
+
+        function renderMeta(sections) {
+            els.metaBody.replaceChildren();
+            const lines = [];
+            sections.forEach(function (section) {
+                const header = document.createElement('tr');
+                const cell = document.createElement('td');
+                cell.colSpan = 2;
+                cell.className = 'section-label';
+                cell.textContent = section.title;
+                header.appendChild(cell);
+                els.metaBody.appendChild(header);
+                lines.push(section.title);
+                section.rows.forEach(function (row) {
+                    const tr = document.createElement('tr');
+                    const k = document.createElement('td');
+                    k.textContent = row[0];
+                    const v = document.createElement('td');
+                    v.className = 'meta-value';
+                    if (row[2]) {
+                        const a = document.createElement('a');
+                        a.href = row[2];
+                        a.target = '_blank';
+                        a.rel = 'noopener noreferrer';
+                        a.textContent = row[1];
+                        v.appendChild(a);
+                    } else {
+                        v.textContent = row[1];
+                    }
+                    tr.appendChild(k);
+                    tr.appendChild(v);
+                    els.metaBody.appendChild(tr);
+                    lines.push(row[0] + ': ' + row[1]);
+                });
+            });
+            copyTextValue = lines.join('\n');
+            els.metaCard.hidden = sections.length === 0;
+        }
+
+        function setPreview(kind, src, name) {
+            els.preview.replaceChildren();
+            els.previewCard.hidden = false;
+            els.kindBadge.textContent = kind === 'image' ? 'Image' : kind === 'video' ? 'Video' : kind === 'audio' ? 'Audio' : 'File';
+            els.kindBadge.className = 'badge ' + (kind === 'file' ? 'warn' : 'info');
+            els.dropLabel.textContent = name || 'Media loaded';
+
+            if (kind === 'image') {
+                const img = document.createElement('img');
+                img.className = 'preview-media';
+                img.alt = name || 'Preview';
+                img.src = src;
+                img.addEventListener('error', function () {
+                    img.remove();
+                    const p = document.createElement('p');
+                    p.className = 'preview-fallback';
+                    p.textContent = 'Preview not available in this browser; metadata is still listed below.';
+                    els.preview.appendChild(p);
+                });
+                els.preview.appendChild(img);
+                return img;
+            }
+            if (kind === 'video') {
+                const video = document.createElement('video');
+                video.className = 'preview-media';
+                video.controls = true;
+                video.preload = 'metadata';
+                video.src = src;
+                els.preview.appendChild(video);
+                return video;
+            }
+            if (kind === 'audio') {
+                const audio = document.createElement('audio');
+                audio.className = 'preview-media';
+                audio.controls = true;
+                audio.preload = 'metadata';
+                audio.src = src;
+                els.preview.appendChild(audio);
+                return audio;
+            }
+            const p = document.createElement('p');
+            p.className = 'preview-fallback';
+            p.textContent = 'No visual preview for this file type.';
+            els.preview.appendChild(p);
+            return null;
+        }
+
+        function mediaElementInfo(el, kind) {
+            return new Promise(function (resolve) {
+                if (!el) {
+                    resolve([]);
+                    return;
+                }
+                const done = function () {
+                    const rows = [];
+                    if (kind === 'image') {
+                        const w = el.naturalWidth;
+                        const h = el.naturalHeight;
+                        if (w && h) {
+                            rows.push(['Dimensions', formatAspect(w, h)]);
+                            rows.push(['Megapixels', (w * h / 1e6).toFixed(2) + ' MP']);
+                        }
+                    } else {
+                        const w = el.videoWidth;
+                        const h = el.videoHeight;
+                        if (w && h) {
+                            rows.push(['Dimensions', formatAspect(w, h)]);
+                            if (kind === 'video') rows.push(['Megapixels', (w * h / 1e6).toFixed(2) + ' MP']);
+                        }
+                        if (Number.isFinite(el.duration) && el.duration > 0) {
+                            rows.push(['Duration', formatDuration(el.duration)]);
+                        }
+                    }
+                    resolve(rows);
+                };
+                if (kind === 'image') {
+                    if (el.complete && el.naturalWidth) done();
+                    else {
+                        el.addEventListener('load', done, { once: true });
+                        el.addEventListener('error', function () { resolve([]); }, { once: true });
+                    }
+                } else {
+                    if (el.readyState >= 1) done();
+                    else {
+                        el.addEventListener('loadedmetadata', done, { once: true });
+                        el.addEventListener('error', function () { resolve([]); }, { once: true });
+                    }
+                }
+            });
+        }
+
+        async function readHeadAndTail(file) {
+            if (file.size <= HEAD_READ * 2) return [await file.arrayBuffer()];
+            const head = await file.slice(0, HEAD_READ).arrayBuffer();
+            const tail = await file.slice(file.size - HEAD_READ).arrayBuffer();
+            return [head, tail];
+        }
+
+        async function inspectFile(file, opts) {
+            opts = opts || {};
+            const sniffBuf = await file.slice(0, 16).arrayBuffer();
+            const sniffed = sniffKind(new Uint8Array(sniffBuf));
+            let kind = detectKind(file, sniffed);
+
+            const chunks = await readHeadAndTail(file);
+            let iso = parseIsoBmff(chunks[0]);
+            if ((!iso || !iso.major) && chunks[1]) iso = parseIsoBmff(chunks[1]);
+            if (iso && iso.major && IMAGE_BRANDS[iso.major]) kind = 'image';
+
+            revokeObjectUrl();
+            objectUrl = URL.createObjectURL(file);
+            const previewEl = setPreview(kind, objectUrl, file.name);
+
+            currentUrl = opts.url || null;
+            if (currentUrl) {
+                els.url.value = currentUrl;
+                const qs = buildQuery();
+                if (qs && qs.length <= MAX_URL_LENGTH) history.replaceState({}, '', '?' + qs);
+                saveState();
+            } else {
+                els.url.value = '';
+                try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+                history.replaceState({}, '', location.pathname);
+            }
+
+            const fileRows = [
+                ['File name', file.name || ''],
+                ['File size', formatBytes(file.size)],
+                ['MIME type', file.type || 'unknown']
+            ];
+            if (opts.url) fileRows.push(['Source URL', opts.url, opts.url]);
+            if (file.lastModified) {
+                fileRows.push(['Last modified', new Date(file.lastModified).toISOString()]);
+            }
+
+            const mediaRows = await mediaElementInfo(previewEl, kind);
+            const pngRows = parsePng(chunks[0]) || [];
+            const wavRows = parseWav(chunks[0]) || [];
+            const containerRows = isoRows(iso);
+
+            let embedded = null;
+            let gps = null;
+            if (typeof exifr !== 'undefined' && kind === 'image') {
+                try { embedded = await exifr.parse(file, true); } catch (e) { embedded = null; }
+                try { gps = await exifr.gps(file); } catch (e) { gps = null; }
+            }
+            const embeddedRows = flattenObject(embedded).filter(function (row) {
+                return row[1] !== '' && row[1] !== '{}' && row[1] !== '[]';
+            });
+            if (gps && Number.isFinite(gps.latitude) && Number.isFinite(gps.longitude)) {
+                const label = Math.abs(gps.latitude).toFixed(6) + '° ' + (gps.latitude >= 0 ? 'N' : 'S') + ', ' +
+                    Math.abs(gps.longitude).toFixed(6) + '° ' + (gps.longitude >= 0 ? 'E' : 'W');
+                const href = 'https://www.openstreetmap.org/?mlat=' + gps.latitude + '&mlon=' + gps.longitude +
+                    '#map=16/' + gps.latitude + '/' + gps.longitude;
+                embeddedRows.unshift(['GPS', label, href]);
+            }
+
+            const sections = [];
+            addSection(sections, 'File', fileRows.filter(function (r) { return r[1]; }));
+            addSection(sections, 'Media', mediaRows);
+            addSection(sections, 'Container', containerRows.concat(pngRows, wavRows));
+            addSection(sections, 'Embedded tags', embeddedRows);
+            renderMeta(sections);
+
+            if (opts.fromQuery) showStatus('Loaded from URL', 'info');
+        }
+
+        async function loadFromUrl(url, fromQuery) {
+            if (!isValidHttpUrl(url)) {
+                showStatus('Invalid URL', 'error');
+                return;
+            }
+            showStatus('Loading…', 'info');
+            try {
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const blob = await res.blob();
+                let name = url.split('/').pop().split('?')[0] || 'media';
+                try { name = decodeURIComponent(name); } catch (e) { /* keep raw */ }
+                const file = new File([blob], name, { type: blob.type, lastModified: Date.now() });
+                await inspectFile(file, { url: url, fromQuery: fromQuery });
+            } catch (e) {
+                await inspectRemotePreview(url, fromQuery);
+            }
+        }
+
+        function guessKindFromUrl(url) {
+            const path = url.split('?')[0].toLowerCase();
+            if (/\.(jpe?g|png|gif|webp|avif|bmp|svg|heic|heif|tiff?)$/.test(path)) return 'image';
+            if (/\.(mp4|webm|ogv|mov|m4v|mkv|avi)$/.test(path)) return 'video';
+            if (/\.(mp3|wav|ogg|m4a|aac|flac|oga|opus)$/.test(path)) return 'audio';
+            return 'image';
+        }
+
+        async function inspectRemotePreview(url, fromQuery) {
+            const kind = guessKindFromUrl(url);
+            revokeObjectUrl();
+            currentUrl = url;
+            els.url.value = url;
+            const qs = buildQuery();
+            if (qs && qs.length <= MAX_URL_LENGTH) history.replaceState({}, '', '?' + qs);
+            saveState();
+            const el = setPreview(kind, url, url.split('/').pop().split('?')[0] || url);
+            const mediaRows = await mediaElementInfo(el, kind);
+            if (!mediaRows.length && (!el || (kind === 'image' && !el.naturalWidth))) {
+                showStatus('Could not load media from that URL', 'error');
+                return;
+            }
+            const sections = [];
+            addSection(sections, 'File', [['Source URL', url, url], ['MIME type', 'unknown (CORS blocked)']]);
+            addSection(sections, 'Media', mediaRows);
+            renderMeta(sections);
+            if (fromQuery) showStatus('Loaded from URL', 'info');
+            else showStatus('Preview only — the host blocked a full metadata read', 'warning');
+        }
+
+        function loadSample() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 360;
+            const ctx = canvas.getContext('2d');
+            const g = ctx.createLinearGradient(0, 0, 640, 360);
+            g.addColorStop(0, '#0066cc');
+            g.addColorStop(1, '#1f2733');
+            ctx.fillStyle = g;
+            ctx.fillRect(0, 0, 640, 360);
+            ctx.fillStyle = '#fff';
+            ctx.font = '600 32px system-ui, sans-serif';
+            ctx.fillText('Media Metadata Viewer', 40, 160);
+            ctx.font = '16px system-ui, sans-serif';
+            ctx.fillStyle = 'rgba(255,255,255,0.85)';
+            ctx.fillText('Sample image · 640 × 360', 40, 196);
+            canvas.toBlob(function (blob) {
+                if (!blob) return;
+                const file = new File([blob], 'sample.png', { type: 'image/png', lastModified: Date.UTC(2026, 7, 30) });
+                inspectFile(file, {});
+            }, 'image/png');
+        }
+
+        function openPicker() {
+            els.file.click();
+        }
+
+        function init() {
+            const param = new URLSearchParams(location.search).get('url');
+            if (typeof param === 'string' && isValidHttpUrl(param)) {
+                els.url.value = param;
+                loadFromUrl(param, true);
+            } else {
+                const saved = loadState();
+                if (saved && isValidHttpUrl(saved.url)) {
+                    els.url.value = saved.url;
+                    loadFromUrl(saved.url, false);
+                } else {
+                    loadSample();
+                }
+            }
+
+            document.getElementById('open').addEventListener('click', openPicker);
+            document.getElementById('share').addEventListener('click', shareURL);
+            document.getElementById('clear').addEventListener('click', clearAll);
+            document.getElementById('copy').addEventListener('click', function () { copyText(copyTextValue); });
+            document.getElementById('load-url').addEventListener('click', function () { loadFromUrl(els.url.value.trim(), false); });
+            els.url.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    loadFromUrl(els.url.value.trim(), false);
+                }
+            });
+            els.file.addEventListener('change', function () {
+                if (els.file.files && els.file.files[0]) inspectFile(els.file.files[0], {});
+            });
+            els.dropzone.addEventListener('click', openPicker);
+            els.dropzone.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openPicker();
+                }
+            });
+            els.dropzone.addEventListener('dragover', function (e) {
+                e.preventDefault();
+                els.dropzone.classList.add('dragover');
+            });
+            els.dropzone.addEventListener('dragleave', function () {
+                els.dropzone.classList.remove('dragover');
+            });
+            document.addEventListener('paste', function (e) {
+                if (e.target === els.url) return;
+                const files = e.clipboardData && e.clipboardData.files;
+                if (files && files[0]) {
+                    e.preventDefault();
+                    inspectFile(files[0], {});
+                }
+            });
+            document.addEventListener('dragover', function (e) { e.preventDefault(); });
+            document.addEventListener('drop', function (e) {
+                e.preventDefault();
+                els.dropzone.classList.remove('dragover');
+                const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+                if (f) inspectFile(f, {});
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
