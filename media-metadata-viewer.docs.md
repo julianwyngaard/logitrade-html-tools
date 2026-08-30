@@ -1,4 +1,4 @@
-# Media Viewer
+# Media Metadata Viewer
 
 Preview a photo, video, or audio file and inspect the metadata the browser and the file itself expose.
 
@@ -35,3 +35,7 @@ Preview a photo, video, or audio file and inspect the metadata the browser and t
 ## Created
 
 2026-08-30 - Initial implementation
+
+## Updated
+
+2026-08-30 - Renamed to Media Metadata Viewer (`media-metadata-viewer`)

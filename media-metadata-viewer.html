@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Media Viewer - tools.julianwyngaard.dev</title>
+    <title>Media Metadata Viewer - tools.julianwyngaard.dev</title>
     <link rel="stylesheet" href="tools.css">
     <style>
-        .dropzone {
+        .media-metadata-viewer .dropzone {
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -22,36 +22,36 @@
             border-radius: var(--radius);
             cursor: pointer;
         }
-        .dropzone:hover,
-        .dropzone.dragover {
+        .media-metadata-viewer .dropzone:hover,
+        .media-metadata-viewer .dropzone.dragover {
             color: var(--info-ink);
             background: var(--info-bg);
             border-color: var(--primary);
         }
-        .drop-hint {
+        .media-metadata-viewer .drop-hint {
             font-size: 0.85rem;
         }
-        .url-field {
+        .media-metadata-viewer .url-field {
             flex: 1;
             min-width: 12rem;
         }
-        .preview-media {
+        .media-metadata-viewer .preview-media {
             display: block;
             max-width: 100%;
             max-height: 24rem;
             margin: 0 auto;
             border-radius: var(--radius);
         }
-        .preview-fallback {
+        .media-metadata-viewer .preview-fallback {
             color: var(--muted);
             text-align: center;
         }
-        .meta-value {
+        .media-metadata-viewer .meta-value {
             font-family: var(--mono);
             font-size: 0.85rem;
             word-break: break-word;
         }
-        .section-label {
+        .media-metadata-viewer .section-label {
             font-size: 0.72rem;
             font-weight: 700;
             letter-spacing: 0.04em;
@@ -60,13 +60,13 @@
             background: var(--surface-alt);
         }
         @media (max-width: 640px) {
-            .preview-media { max-height: 16rem; }
+            .media-metadata-viewer .preview-media { max-height: 16rem; }
         }
     </style>
 </head>
-<body>
+<body class="media-metadata-viewer">
     <a href="index.html" class="back-link">&larr; All Tools</a>
-    <h1>Media Viewer</h1>
+    <h1>Media Metadata Viewer</h1>
     <p class="lede">Drop a photo or video to preview it and inspect every metadata field the file carries.</p>
 
     <div class="buttons">
@@ -126,10 +126,10 @@
 
     <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.js"></script>
     <script>
-        // ABOUTME: Media viewer that previews photos, video, and audio and lists file,
-        // ABOUTME: media, EXIF, and container metadata; a remote file is shareable via ?url=.
+        // ABOUTME: Media metadata viewer that previews photos, video, and audio and lists
+        // ABOUTME: file, media, EXIF, and container metadata; a remote file is shareable via ?url=.
 
-        const STORAGE_KEY = 'media-viewer-state';
+        const STORAGE_KEY = 'media-metadata-viewer-state';
         const MAX_URL_LENGTH = 1500;
         const HEAD_READ = 2 * 1024 * 1024;
         const IMAGE_BRANDS = { heic: 1, heix: 1, hevc: 1, hevx: 1, mif1: 1, msf1: 1, avif: 1, avis: 1 };
@@ -811,7 +811,7 @@
             ctx.fillRect(0, 0, 640, 360);
             ctx.fillStyle = '#fff';
             ctx.font = '600 32px system-ui, sans-serif';
-            ctx.fillText('Media Viewer', 40, 160);
+            ctx.fillText('Media Metadata Viewer', 40, 160);
             ctx.font = '16px system-ui, sans-serif';
             ctx.fillStyle = 'rgba(255,255,255,0.85)';
             ctx.fillText('Sample image · 640 × 360', 40, 196);

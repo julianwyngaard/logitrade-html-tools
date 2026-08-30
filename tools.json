@@ -121,8 +121,8 @@
       "updated": "2026-08-29"
     },
     {
-      "slug": "media-viewer",
-      "name": "Media Viewer",
+      "slug": "media-metadata-viewer",
+      "name": "Media Metadata Viewer",
       "description": "Preview photos and videos and inspect file, media, EXIF, and container metadata. Shareable via URL.",
       "category": "image",
       "created": "2026-08-30",
