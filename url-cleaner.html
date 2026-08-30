@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Cleaner - tools.julianwyngaard.dev</title>
+    <link rel="stylesheet" href="tools.css">
+    <style>
+        /* Tool-specific styles only. Tokens, base type, buttons, form controls,
+           focus rings, status, cards and footer all come from tools.css. */
+        .url-cleaner .output-box {
+            min-height: 2.5rem;
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-all;
+            color: var(--ink);
+        }
+
+        .url-cleaner .count {
+            color: var(--muted);
+            font-weight: 400;
+        }
+
+        .url-cleaner .tag {
+            display: inline-block;
+            padding: 0.1rem 0.5rem;
+            font-family: var(--mono);
+            font-size: 0.8rem;
+            color: var(--muted);
+            background: var(--surface-alt);
+            border: 1px solid var(--line);
+            border-radius: var(--radius-pill);
+            margin: 0 0.3rem 0.3rem 0;
+            word-break: break-all;
+        }
+
+        .url-cleaner .note {
+            color: var(--muted);
+            font-style: italic;
+            font-size: 0.9rem;
+        }
+
+        .url-cleaner .family-hint {
+            color: var(--muted);
+            font-size: 0.8rem;
+            font-weight: 400;
+        }
+
+        @media (max-width: 640px) {
+            .url-cleaner .tag {
+                word-break: break-word;
+            }
+        }
+    </style>
+</head>
+<body class="url-cleaner">
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>URL Cleaner</h1>
+    <p class="lede">Paste a link to strip click-tracking parameters (UTM and friends) while keeping everything else.</p>
+
+    <div class="buttons">
+        <button id="share">Share URL</button>
+        <button id="clear">Clear</button>
+    </div>
+
+    <main>
+        <div class="field">
+            <label for="input">URL</label>
+            <input type="text" id="input" spellcheck="false" autocomplete="off"
+                   placeholder="https://example.com/pricing?utm_source=newsletter&utm_medium=email&plan=pro">
+        </div>
+
+        <div class="field-row">
+            <div class="field">
+                <label class="inline">
+                    <input type="checkbox" data-fam="utm" checked>
+                    UTM <span class="family-hint">utm_*</span>
+                </label>
+            </div>
+            <div class="field">
+                <label class="inline">
+                    <input type="checkbox" data-fam="google" checked>
+                    Google <span class="family-hint">gclid, dclid…</span>
+                </label>
+            </div>
+            <div class="field">
+                <label class="inline">
+                    <input type="checkbox" data-fam="social" checked>
+                    Social <span class="family-hint">fbclid, igsh…</span>
+                </label>
+            </div>
+            <div class="field">
+                <label class="inline">
+                    <input type="checkbox" data-fam="email" checked>
+                    Email <span class="family-hint">mc_cid, mc_eid</span>
+                </label>
+            </div>
+            <div class="field">
+                <label class="inline">
+                    <input type="checkbox" data-fam="other" checked>
+                    Other <span class="family-hint">msclkid, pk_*</span>
+                </label>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span>Cleaned URL</span>
+                <span class="spacer"></span>
+                <button id="copy" class="small">Copy</button>
+            </div>
+            <div class="card-body">
+                <div id="output" class="output-box"></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span>Removed <span id="removed-count" class="count"></span></span>
+            </div>
+            <div class="card-body">
+                <div id="removed"></div>
+            </div>
+        </div>
+    </main>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        // ABOUTME: URL Cleaner — strips click-tracking query parameters (UTM, Google, social, email,
+        // ABOUTME: other) from a pasted URL, keeping everything else; live output and shareable.
+
+        const STORAGE_KEY = 'url-cleaner-state';
+        const MAX_URL_LENGTH = 1500;
+        const SAMPLE = 'https://example.com/pricing?utm_source=newsletter&utm_medium=email&utm_campaign=summer-sale&gclid=AbC123&fbclid=IGwAz&plan=pro';
+
+        // Families of tracking parameters. `prefixes` match on a lowercase prefix
+        // (any utm_*), `params` match on the exact lowercase name. Order here is the
+        // display and matching order.
+        const TRACKING = {
+            utm: {
+                label: 'UTM',
+                hint: 'utm_source, utm_medium, utm_campaign, utm_term, utm_content, utm_id',
+                prefixes: ['utm_']
+            },
+            google: {
+                label: 'Google',
+                hint: 'gclid, gclsrc, gbraid, dclid',
+                params: ['gclid', 'gclsrc', 'gbraid', 'dclid']
+            },
+            social: {
+                label: 'Social',
+                hint: 'fbclid, twclid, igsh, igshid, yclid',
+                params: ['fbclid', 'twclid', 'igsh', 'igshid', 'yclid']
+            },
+            email: {
+                label: 'Email',
+                hint: 'mc_cid, mc_eid',
+                params: ['mc_cid', 'mc_eid']
+            },
+            other: {
+                label: 'Other',
+                hint: 'msclkid, pk_source, pk_medium, pk_campaign, pk_keyword',
+                params: ['msclkid', 'pk_source', 'pk_medium', 'pk_campaign', 'pk_keyword', 'pk_content']
+            }
+        };
+        const ALL_FAMILIES = Object.keys(TRACKING);
+
+        const els = {
+            input: document.getElementById('input'),
+            output: document.getElementById('output'),
+            removed: document.getElementById('removed'),
+            removedCount: document.getElementById('removed-count'),
+            status: document.getElementById('status'),
+            checkboxes: {}
+        };
+        document.querySelectorAll('[data-fam]').forEach(cb => {
+            const id = cb.getAttribute('data-fam');
+            els.checkboxes[id] = cb;
+            cb.parentElement.title = TRACKING[id] ? TRACKING[id].hint : '';
+        });
+
+        // ---- Status ----------------------------------------------------------
+        let statusTimer = null;
+
+        function showStatus(message, type) {
+            clearTimeout(statusTimer);
+            els.status.textContent = message;
+            els.status.className = 'status ' + (type || 'info');
+            // Errors stay up; everything else clears itself.
+            if (type !== 'error') {
+                statusTimer = setTimeout(() => {
+                    els.status.textContent = '';
+                    els.status.className = 'status';
+                }, 3000);
+            }
+        }
+
+        // ---- Clipboard -------------------------------------------------------
+        function copyText(text) {
+            if (!text) {
+                showStatus('Nothing to copy', 'info');
+                return;
+            }
+            navigator.clipboard.writeText(text)
+                .then(() => showStatus('Copied to clipboard', 'success'))
+                // Never claim success we cannot confirm.
+                .catch(() => showStatus('Copy failed — select and copy manually', 'error'));
+        }
+
+        // ---- URL state -------------------------------------------------------
+        function buildQuery() {
+            const params = new URLSearchParams();
+            const value = els.input.value.trim();
+            if (value) params.set('input', value);
+            const enabled = getEnabledFamilies();
+            // Only encode the selection when it differs from the default (all on),
+            // so most shared links stay short.
+            if (enabled.length !== ALL_FAMILIES.length) {
+                params.set('fam', enabled.join(','));
+            }
+            return params.toString();
+        }
+
+        function shareURL() {
+            const qs = buildQuery();
+            if (!qs) {
+                showStatus('Nothing to share', 'info');
+                return;
+            }
+            if (qs.length > MAX_URL_LENGTH) {
+                showStatus('URL too long to share', 'error');
+                return;
+            }
+            const url = location.origin + location.pathname + '?' + qs;
+            history.replaceState({}, '', '?' + qs);
+            navigator.clipboard.writeText(url)
+                .then(() => showStatus('URL copied to clipboard', 'success'))
+                .catch(() => showStatus('URL updated — copy from address bar', 'info'));
+        }
+
+        // ---- Persistence -----------------------------------------------------
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    input: els.input.value,
+                    families: getEnabledFamilies()
+                }));
+            } catch (e) { /* private browsing, quota — not worth reporting */ }
+        }
+
+        function loadState() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return null;
+                return JSON.parse(raw) || null;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function clearAll() {
+            els.input.value = '';
+            setFamilies(ALL_FAMILIES);
+            run();
+            try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+            history.replaceState({}, '', location.pathname);
+            showStatus('Cleared', 'success');
+        }
+
+        // ---- The tool itself -------------------------------------------------
+        function getEnabledFamilies() {
+            return ALL_FAMILIES.filter(id => els.checkboxes[id] && els.checkboxes[id].checked);
+        }
+
+        function setFamilies(fams) {
+            const set = new Set(fams);
+            ALL_FAMILIES.forEach(id => {
+                if (els.checkboxes[id]) els.checkboxes[id].checked = set.has(id);
+            });
+        }
+
+        function loadFamilies(famStr) {
+            if (famStr == null) return ALL_FAMILIES.slice();
+            const selected = famStr.split(',').map(s => s.trim()).filter(Boolean);
+            return ALL_FAMILIES.filter(id => selected.includes(id));
+        }
+
+        // A query segment is stripped if its (lowercased, decoded) name matches any
+        // enabled family's prefix or exact parameter.
+        function shouldStrip(key, enabled) {
+            let name = key;
+            try { name = decodeURIComponent(key); } catch (e) { /* leave raw */ }
+            const lk = name.toLowerCase();
+            for (const id of enabled) {
+                const fam = TRACKING[id];
+                if (!fam) continue;
+                if (fam.prefixes && fam.prefixes.some(p => lk.startsWith(p))) return true;
+                if (fam.params && fam.params.some(p => p === lk)) return true;
+            }
+            return false;
+        }
+
+        // Split on the first '?' (and a later '#') so it works on real and
+        // unresolvable URLs alike. Original segment text is preserved for kept
+        // parameters; the '?' is dropped if nothing survives.
+        function cleanURL(input, enabled) {
+            const trimmed = (input || '').trim();
+            if (!trimmed) return { cleaned: '', removed: [] };
+
+            const qIdx = trimmed.indexOf('?');
+            if (qIdx === -1) return { cleaned: trimmed, removed: [] };
+
+            const hIdx = trimmed.indexOf('#');
+            let prefix, rawQuery, tail = '';
+            if (hIdx !== -1 && hIdx > qIdx) {
+                prefix = trimmed.slice(0, qIdx);
+                rawQuery = trimmed.slice(qIdx + 1, hIdx);
+                tail = trimmed.slice(hIdx);
+            } else {
+                prefix = trimmed.slice(0, qIdx);
+                rawQuery = trimmed.slice(qIdx + 1);
+            }
+
+            const pairs = rawQuery ? rawQuery.split('&')
+                    .filter(seg => seg.length > 0)
+                    .map(seg => {
+                        const eq = seg.indexOf('=');
+                        if (eq === -1) return { key: seg, value: '', seg };
+                        return { key: seg.slice(0, eq), value: seg.slice(eq + 1), seg };
+                    })
+                : [];
+
+            const keep = [];
+            const removed = [];
+            for (const p of pairs) {
+                (shouldStrip(p.key, enabled) ? removed : keep).push(p);
+            }
+
+            const newQuery = keep.map(p => p.seg).join('&');
+            const cleaned = prefix + (newQuery ? '?' + newQuery : '') + tail;
+            return { cleaned, removed };
+        }
+
+        function renderOutput(result) {
+            els.output.textContent = result.cleaned || '';
+            const wrap = els.removed;
+            while (wrap.firstChild) wrap.removeChild(wrap.firstChild);
+
+            if (!els.input.value.trim()) {
+                els.removedCount.textContent = '';
+                return;
+            }
+
+            if (result.removed.length === 0) {
+                els.removedCount.textContent = '(0)';
+                const note = document.createElement('span');
+                note.className = 'note';
+                note.textContent = 'No tracking parameters found';
+                wrap.appendChild(note);
+            } else {
+                els.removedCount.textContent = '(' + result.removed.length + ')';
+                result.removed.forEach(p => {
+                    const tag = document.createElement('span');
+                    tag.className = 'tag';
+                    tag.textContent = p.key + (p.value ? '=' + p.value : '');
+                    wrap.appendChild(tag);
+                });
+            }
+        }
+
+        function run() {
+            const result = cleanURL(els.input.value, getEnabledFamilies());
+            renderOutput(result);
+            saveState();
+        }
+
+        // ---- Init ------------------------------------------------------------
+        function init() {
+            const params = new URLSearchParams(location.search);
+            const urlInput = params.get('input');
+            const famFromUrl = params.has('fam') ? loadFamilies(params.get('fam')) : null;
+
+            let input;
+            if (typeof urlInput === 'string' && urlInput.length <= MAX_URL_LENGTH) {
+                input = urlInput;
+                showStatus('Loaded from URL', 'info');
+            } else {
+                const saved = loadState();
+                input = (saved && typeof saved.input === 'string' && saved.input)
+                    ? saved.input
+                    : SAMPLE;
+            }
+            els.input.value = input;
+
+            // Families: URL param, then localStorage, then all on.
+            let fams = famFromUrl;
+            if (!fams) {
+                const saved = loadState();
+                fams = (saved && Array.isArray(saved.families)) ? saved.families : ALL_FAMILIES;
+            }
+            setFamilies(fams);
+
+            run();
+
+            document.getElementById('share').addEventListener('click', shareURL);
+            document.getElementById('clear').addEventListener('click', clearAll);
+            document.getElementById('copy').addEventListener('click', () => copyText(els.output.textContent));
+            els.input.addEventListener('input', run);
+            Object.values(els.checkboxes).forEach(cb => cb.addEventListener('change', run));
+            els.input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') e.preventDefault();
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
