@@ -127,6 +127,14 @@
       "category": "image",
       "created": "2026-08-30",
       "updated": "2026-08-30"
+    },
+    {
+      "slug": "url-cleaner",
+      "name": "URL Cleaner",
+      "description": "Remove common click-tracking parameters from URLs while preserving everything else. Shareable via URL.",
+      "category": "dev",
+      "created": "2026-09-06",
+      "updated": "2026-09-06"
     }
   ],
   "categories": {

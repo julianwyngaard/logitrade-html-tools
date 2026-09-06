@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>URL Cleaner - tools.julianwyngaard.dev</title>
+    <link rel="stylesheet" href="tools.css">
+    <style>
+        .url-cleaner .url-input {
+            width: 100%;
+            font-family: var(--mono);
+            font-size: 0.85rem;
+        }
+
+        .url-cleaner .clean-output {
+            min-height: 3.75rem;
+            font-family: var(--mono);
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .url-cleaner .removed-details {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.4rem;
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            font-size: 0.85rem;
+            color: var(--muted);
+            border-top: 1px solid var(--line);
+        }
+
+        .url-cleaner .removed-keys {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        @media (max-width: 640px) {
+            .url-cleaner .clean-output {
+                min-height: 5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="index.html" class="back-link">&larr; All Tools</a>
+    <h1>URL Cleaner</h1>
+    <p class="lede">Paste a URL to remove common click-tracking parameters without changing the rest.</p>
+
+    <div class="buttons">
+        <button id="clean" class="primary">Clean URL</button>
+        <button id="share">Share URL</button>
+        <button id="clear">Clear</button>
+    </div>
+
+    <main class="url-cleaner">
+        <div class="field">
+            <label for="url-input">URL</label>
+            <input id="url-input" class="url-input" type="url" spellcheck="false" autocomplete="off">
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <span>Clean URL</span>
+                <span id="result-badge" class="badge" hidden></span>
+                <span class="spacer"></span>
+                <button id="copy" class="small">Copy</button>
+            </div>
+            <div class="card-body">
+                <div id="output" class="clean-output" aria-live="polite"></div>
+                <div id="removed-details" class="removed-details" hidden>
+                    <span id="removed-label"></span>
+                    <span id="removed-keys" class="removed-keys"></span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="status" class="status" role="status" aria-live="polite"></div>
+
+    <footer>
+        <a href="index.html">tools.julianwyngaard.dev</a> |
+        <a href="https://github.com/julianwyngaard/logitrade-html-tools">Source</a>
+    </footer>
+
+    <script>
+        // ABOUTME: Removes common marketing and advertising click identifiers from absolute URLs.
+        // ABOUTME: It filters query parameters in place so all non-tracking URL content stays unchanged.
+
+        const STORAGE_KEY = 'url-cleaner-state';
+        const MAX_URL_LENGTH = 1500;
+        const SAMPLE = 'https://example.com/articles/url-cleaning?utm_source=newsletter&utm_medium=email&topic=privacy&sort=newest&fbclid=IwAR123#examples';
+        const TRACKING_PARAMETERS = new Set([
+            '_hsenc',
+            '_hsmi',
+            'dclid',
+            'fbclid',
+            'gad_source',
+            'gbraid',
+            'gclid',
+            'igshid',
+            'li_fat_id',
+            'mc_cid',
+            'mc_eid',
+            'mkt_tok',
+            'msclkid',
+            'oly_anon_id',
+            'oly_enc_id',
+            'rb_clickid',
+            's_cid',
+            'ttclid',
+            'twclid',
+            'vero_conv',
+            'vero_id',
+            'wbraid',
+            'yclid'
+        ]);
+
+        const els = {
+            input: document.getElementById('url-input'),
+            output: document.getElementById('output'),
+            badge: document.getElementById('result-badge'),
+            removedDetails: document.getElementById('removed-details'),
+            removedLabel: document.getElementById('removed-label'),
+            removedKeys: document.getElementById('removed-keys'),
+            status: document.getElementById('status')
+        };
+
+        let statusTimer = null;
+
+        function clearStatus() {
+            clearTimeout(statusTimer);
+            els.status.textContent = '';
+            els.status.className = 'status';
+        }
+
+        function showStatus(message, type) {
+            clearStatus();
+            els.status.textContent = message;
+            els.status.className = 'status ' + (type || 'info');
+            if (type !== 'error') {
+                statusTimer = setTimeout(clearStatus, 3000);
+            }
+        }
+
+        function copyText(text) {
+            if (!text) {
+                showStatus('Nothing to copy', 'info');
+                return;
+            }
+            navigator.clipboard.writeText(text)
+                .then(() => showStatus('Copied to clipboard', 'success'))
+                .catch(() => showStatus('Copy failed — select and copy manually', 'error'));
+        }
+
+        function isValidURL(value) {
+            if (!value) return false;
+            try {
+                new URL(value);
+                return true;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function decodeParameterName(segment) {
+            const equalsIndex = segment.indexOf('=');
+            const rawName = equalsIndex === -1 ? segment : segment.slice(0, equalsIndex);
+            try {
+                return decodeURIComponent(rawName.replace(/\+/g, ' '));
+            } catch (error) {
+                return rawName;
+            }
+        }
+
+        function isTrackingParameter(name) {
+            const normalised = name.toLowerCase();
+            return normalised.startsWith('utm_') || TRACKING_PARAMETERS.has(normalised);
+        }
+
+        function cleanURL(value) {
+            const input = value.trim();
+            if (!input) return { error: 'Enter a URL to clean' };
+            if (!isValidURL(input)) return { error: 'Enter a valid absolute URL' };
+
+            const hashIndex = input.indexOf('#');
+            const beforeHash = hashIndex === -1 ? input : input.slice(0, hashIndex);
+            const hash = hashIndex === -1 ? '' : input.slice(hashIndex);
+            const queryIndex = beforeHash.indexOf('?');
+            if (queryIndex === -1) return { url: input, removed: [] };
+
+            const base = beforeHash.slice(0, queryIndex);
+            const segments = beforeHash.slice(queryIndex + 1).split('&');
+            const kept = [];
+            const removed = [];
+
+            segments.forEach((segment) => {
+                const name = decodeParameterName(segment);
+                if (segment && isTrackingParameter(name)) {
+                    removed.push(name);
+                } else {
+                    kept.push(segment);
+                }
+            });
+
+            if (removed.length === 0) return { url: input, removed: [] };
+            const query = kept.some((segment) => segment !== '') ? '?' + kept.join('&') : '';
+            return { url: base + query + hash, removed };
+        }
+
+        function renderRemoved(removed) {
+            els.removedDetails.hidden = false;
+            els.removedKeys.replaceChildren();
+
+            if (removed.length === 0) {
+                els.removedLabel.textContent = 'No known tracking parameters found.';
+                return;
+            }
+
+            els.removedLabel.textContent = 'Removed:';
+            removed.forEach((name) => {
+                const key = document.createElement('span');
+                key.className = 'badge warn';
+                key.textContent = name;
+                els.removedKeys.appendChild(key);
+            });
+        }
+
+        function resetResult() {
+            els.output.textContent = '';
+            els.badge.textContent = '';
+            els.badge.className = 'badge';
+            els.badge.hidden = true;
+            els.removedDetails.hidden = true;
+            els.removedLabel.textContent = '';
+            els.removedKeys.replaceChildren();
+        }
+
+        function run(reportStatus) {
+            const result = cleanURL(els.input.value);
+            if (result.error) {
+                resetResult();
+                els.badge.textContent = 'Invalid URL';
+                els.badge.className = 'badge err';
+                els.badge.hidden = false;
+                if (reportStatus) showStatus(result.error, 'error');
+                return;
+            }
+
+            els.output.textContent = result.url;
+            els.badge.textContent = result.removed.length === 0
+                ? 'Already clean'
+                : result.removed.length + ' removed';
+            els.badge.className = 'badge ' + (result.removed.length === 0 ? 'info' : 'ok');
+            els.badge.hidden = false;
+            renderRemoved(result.removed);
+            saveState();
+
+            if (reportStatus) {
+                const message = result.removed.length === 0
+                    ? 'No tracking parameters found'
+                    : 'Removed ' + result.removed.length + ' tracking parameter' + (result.removed.length === 1 ? '' : 's');
+                showStatus(message, result.removed.length === 0 ? 'info' : 'success');
+            }
+        }
+
+        function buildQuery() {
+            const params = new URLSearchParams();
+            const value = els.input.value.trim();
+            if (value) params.set('url', value);
+            return params.toString();
+        }
+
+        function shareURL() {
+            const value = els.input.value.trim();
+            if (!value) {
+                showStatus('Nothing to share', 'info');
+                return;
+            }
+            if (!isValidURL(value)) {
+                showStatus('Enter a valid absolute URL', 'error');
+                return;
+            }
+
+            const qs = buildQuery();
+            if (qs.length > MAX_URL_LENGTH) {
+                showStatus('URL too long to share', 'error');
+                return;
+            }
+
+            const url = location.origin + location.pathname + '?' + qs;
+            history.replaceState({}, '', '?' + qs);
+            navigator.clipboard.writeText(url)
+                .then(() => showStatus('URL copied to clipboard', 'success'))
+                .catch(() => showStatus('URL updated — copy from address bar', 'info'));
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({ url: els.input.value }));
+            } catch (error) { /* Storage can be unavailable in private browsing. */ }
+        }
+
+        function loadState() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || null;
+            } catch (error) {
+                return null;
+            }
+        }
+
+        function clearAll() {
+            els.input.value = '';
+            resetResult();
+            try { localStorage.removeItem(STORAGE_KEY); } catch (error) {}
+            history.replaceState({}, '', location.pathname);
+            showStatus('Cleared', 'success');
+            els.input.focus();
+        }
+
+        function init() {
+            const params = new URLSearchParams(location.search);
+            const param = params.get('url');
+            const validParam = location.search.slice(1).length <= MAX_URL_LENGTH && isValidURL(param);
+
+            if (validParam) {
+                els.input.value = param;
+                run(false);
+                showStatus('Loaded from URL', 'info');
+            } else {
+                const saved = loadState();
+                els.input.value = saved && typeof saved.url === 'string' && isValidURL(saved.url.trim())
+                    ? saved.url
+                    : SAMPLE;
+                run(false);
+            }
+
+            document.getElementById('clean').addEventListener('click', () => run(true));
+            document.getElementById('share').addEventListener('click', shareURL);
+            document.getElementById('clear').addEventListener('click', clearAll);
+            document.getElementById('copy').addEventListener('click', () => copyText(els.output.textContent));
+            els.input.addEventListener('input', () => {
+                clearStatus();
+                resetResult();
+                saveState();
+            });
+            els.input.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    run(true);
+                }
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
