@@ -127,6 +127,14 @@
       "category": "image",
       "created": "2026-08-30",
       "updated": "2026-08-30"
+    },
+    {
+      "slug": "url-cleaner",
+      "name": "URL Cleaner",
+      "description": "Strip click-tracking and UTM parameters from a URL, keeping everything else. Shareable via URL.",
+      "category": "dev",
+      "created": "2026-08-30",
+      "updated": "2026-08-30"
     }
   ],
   "categories": {
