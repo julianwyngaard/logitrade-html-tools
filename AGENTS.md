@@ -98,5 +98,6 @@ Serve on 3737 and open the tool. Check, at ~1200px and ~600px wide:
 ## Git workflow
 
 - Branches: `feature/[slug]` for new tools, `fix/[topic]` for fixes. Every change lands via a GitHub PR to `main`.
+- `main` is protected by a GitHub ruleset: direct pushes, force pushes, and deletion are rejected. PRs merge by squash only, and the branch is deleted on merge.
 - Commit subjects: imperative, sentence case, no prefixes — `Add Colour Picker tool`, `Fix DST handling in Timezone Comparison`. Body: a short paragraph on why, then a bullet list of what changed.
 - Keep the working tree free of build-unrelated binaries; reference images from the PR, not the repo.
